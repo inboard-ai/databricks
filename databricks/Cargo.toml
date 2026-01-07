@@ -1,0 +1,16 @@
+[package]
+name = "databricks"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+databricks_core = { path = "../core" }
+
+[[example]]
+name = "test_connection"
+path = "../examples/test_connection.rs"
+
+[dev-dependencies]
+tokio.workspace = true
+serde.workspace = true

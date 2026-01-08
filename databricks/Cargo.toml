@@ -7,6 +7,7 @@ license.workspace = true
 [dependencies]
 databricks_core = { path = "../core" }
 databricks_sql = { path = "../sql" }
+databricks_genie = { path = "../genie" }
 
 [[example]]
 name = "test_connection"
@@ -15,6 +16,10 @@ path = "../examples/test_connection.rs"
 [[example]]
 name = "sql_query"
 path = "../examples/sql_query.rs"
+
+[[example]]
+name = "genie_chat"
+path = "../examples/genie_chat.rs"
 
 [dev-dependencies]
 tokio.workspace = true

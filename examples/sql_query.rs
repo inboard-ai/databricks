@@ -52,40 +52,57 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // Execute a simple query
     let statements = sql::Statements::new(&client);
+    let catalog = sql::Catalog::new(statements, warehouse_id);
 
-    let request = sql::Request::new("SELECT 1 as one, 2 as two, 'hello' as greeting", warehouse_id);
+    // List catalogs
+    println!("\nCatalogs:");
+    for name in catalog.list_catalogs().await? {
+        println!("  {}", name);
+    }
 
-    println!("\nExecuting query...");
+    // List schemas in samples
+    println!("\nSchemas in 'samples':");
+    for name in catalog.list_schemas("samples").await? {
+        println!("  {}", name);
+    }
+
+    // List tables in samples.bakehouse
+    println!("\nTables in 'samples.bakehouse':");
+    for table in catalog.list_tables("samples", "bakehouse").await? {
+        println!("  {}", table.name);
+    }
+
+    // Describe a table
+    println!("\nColumns in 'sales_transactions':");
+    for col in catalog.describe_table("samples", "bakehouse", "sales_transactions").await? {
+        println!("  {} ({}){}",
+            col.name,
+            col.data_type,
+            if col.nullable { "" } else { " NOT NULL" }
+        );
+    }
+
+    // Run a real query
+    let statements = sql::Statements::new(&client);
+    println!("\nTop 5 products by revenue:");
+    let request = sql::Request::new(
+        "SELECT product, SUM(totalPrice) as revenue \
+         FROM samples.bakehouse.sales_transactions \
+         GROUP BY product \
+         ORDER BY revenue DESC \
+         LIMIT 5",
+        warehouse_id,
+    );
     let response = statements
         .execute_wait(&request, Duration::from_secs(1), Duration::from_secs(60))
         .await?;
 
-    println!("Statement ID: {}", response.statement_id);
-    println!("State: {:?}", response.status.state);
-
-    if let Some(manifest) = &response.manifest {
-        if let Some(schema) = &manifest.schema {
-            println!("\nColumns:");
-            for col in &schema.columns {
-                println!(
-                    "  {} ({})",
-                    col.name,
-                    col.type_text.as_deref().unwrap_or("?")
-                );
-            }
-        }
-    }
-
     if let Some(result) = &response.result {
-        println!("\nRows:");
         for row in &result.data_array {
-            let values: Vec<_> = row
-                .iter()
-                .map(|v| v.as_deref().unwrap_or("NULL"))
-                .collect();
-            println!("  {:?}", values);
+            let product = row.get(0).and_then(|v| v.as_deref()).unwrap_or("?");
+            let revenue = row.get(1).and_then(|v| v.as_deref()).unwrap_or("?");
+            println!("  {} - ${}", product, revenue);
         }
     }
 

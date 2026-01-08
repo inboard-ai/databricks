@@ -1,7 +1,7 @@
 use crossterm::event::{self, Event, KeyCode, KeyModifiers};
 use databricks::{genie, sql, Client};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tokio::sync::mpsc;
 
 pub enum Message {
@@ -14,7 +14,13 @@ pub enum Message {
     Scroll(i16),
     ToggleSuggestions,
     DismissSuggestions,
-    Quit,
+
+    // Commands
+    Clear,
+    Help,
+    RequestQuit,  // Show confirmation
+    ConfirmQuit,  // Actually quit
+    CancelQuit,   // Go back to chat
 
     // Async results
     Genie(Result<genie::Message, databricks::Error>),
@@ -33,6 +39,7 @@ pub enum Screen {
         selected: usize,
     },
     Chat,
+    QuitConfirm,
 }
 
 #[derive(Clone)]
@@ -73,6 +80,7 @@ pub struct Model {
     pub status: Status,
     pub quit: bool,
     conversation_id: Option<String>,
+    last_esc: Option<Instant>,
 
     // Resources
     client: Arc<Client>,
@@ -101,6 +109,7 @@ impl Model {
             status: Status::Idle,
             quit: false,
             conversation_id: None,
+            last_esc: None,
             client,
             space_id: None,
             warehouse_id,
@@ -118,9 +127,9 @@ impl Model {
             return None;
         }
 
-        // Ctrl+C always quits
+        // Ctrl+C always quits immediately (no confirmation)
         if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c') {
-            return Some(Message::Quit);
+            return Some(Message::ConfirmQuit);
         }
 
         match &mut self.screen {
@@ -135,11 +144,25 @@ impl Model {
                     KeyCode::Enter => {
                         return Some(Message::SelectSpace(*selected));
                     }
+                    KeyCode::Esc => {
+                        return Some(Message::RequestQuit);
+                    }
                     _ => {}
                 }
                 None
             }
             Screen::Chat => self.handle_chat_event(key),
+            Screen::QuitConfirm => {
+                match key.code {
+                    KeyCode::Enter | KeyCode::Char('y') | KeyCode::Char('Y') => {
+                        Some(Message::ConfirmQuit)
+                    }
+                    KeyCode::Esc | KeyCode::Char('n') | KeyCode::Char('N') => {
+                        Some(Message::CancelQuit)
+                    }
+                    _ => None,
+                }
+            }
         }
     }
 
@@ -163,9 +186,21 @@ impl Model {
                 KeyCode::Esc => return Some(Message::DismissSuggestions),
                 KeyCode::Tab => return Some(Message::ToggleSuggestions),
                 _ => {
-                    self.hide_suggestions();
+                    // Collapse but keep suggestions available
+                    self.collapse_suggestions();
                 }
             }
+        }
+
+        // Double-ESC to quit when idle
+        if key.code == KeyCode::Esc && self.status == Status::Idle && !self.show_suggestions {
+            if let Some(last) = self.last_esc {
+                if last.elapsed() < Duration::from_millis(500) {
+                    return Some(Message::RequestQuit);
+                }
+            }
+            self.last_esc = Some(Instant::now());
+            return None;
         }
 
         // Input handling
@@ -185,7 +220,13 @@ impl Model {
             KeyCode::Right if self.cursor < self.input.len() => self.cursor += 1,
             KeyCode::Home => self.cursor = 0,
             KeyCode::End => self.cursor = self.input.len(),
-            KeyCode::Up => return Some(Message::Scroll(-3)),
+            KeyCode::Up => {
+                // If suggestions exist but are collapsed, show them
+                if !self.suggestions.is_empty() && !self.show_suggestions {
+                    return Some(Message::ToggleSuggestions);
+                }
+                return Some(Message::Scroll(-3));
+            }
             KeyCode::Down => return Some(Message::Scroll(3)),
             KeyCode::PageUp => return Some(Message::Scroll(-10)),
             KeyCode::PageDown => return Some(Message::Scroll(10)),
@@ -195,6 +236,12 @@ impl Model {
             KeyCode::Enter if self.status == Status::Idle => {
                 let text = self.input.trim();
                 if !text.is_empty() {
+                    // Check for commands
+                    if let Some(msg) = self.parse_command(text) {
+                        self.input.clear();
+                        self.cursor = 0;
+                        return Some(msg);
+                    }
                     let question = self.input.clone();
                     self.input.clear();
                     self.cursor = 0;
@@ -205,6 +252,21 @@ impl Model {
         }
 
         None
+    }
+
+    fn parse_command(&self, input: &str) -> Option<Message> {
+        let input = input.trim();
+        if !input.starts_with('/') {
+            return None;
+        }
+
+        let cmd = input[1..].split_whitespace().next()?;
+        match cmd.to_lowercase().as_str() {
+            "exit" | "quit" | "q" => Some(Message::RequestQuit),
+            "clear" => Some(Message::Clear),
+            "help" | "?" => Some(Message::Help),
+            _ => None,
+        }
     }
 
     /// Process a message, optionally return another to chain
@@ -228,7 +290,7 @@ impl Model {
 
             Message::AcceptSuggestion(idx) => {
                 if let Some(question) = self.suggestions.get(idx).cloned() {
-                    self.hide_suggestions();
+                    self.clear_suggestions();
                     return Some(Message::Submit(question));
                 }
             }
@@ -249,11 +311,32 @@ impl Model {
             }
 
             Message::DismissSuggestions => {
-                self.hide_suggestions();
+                self.collapse_suggestions();
             }
 
-            Message::Quit => {
+            Message::Clear => {
+                self.chat.clear();
+                self.scroll = 0;
+                self.conversation_id = None;
+            }
+
+            Message::Help => {
+                self.chat.push(ChatEntry::Assistant(
+                    "Commands:\n  /clear - Clear chat history\n  /exit  - Exit the app\n  /help  - Show this help\n\nShortcuts:\n  Ctrl+C - Exit immediately\n  ESC ESC - Exit with confirmation\n  Tab - Toggle suggestions\n  ↑↓ - Scroll or navigate suggestions".to_string()
+                ));
+                self.scroll_to_bottom();
+            }
+
+            Message::RequestQuit => {
+                self.screen = Screen::QuitConfirm;
+            }
+
+            Message::ConfirmQuit => {
                 self.quit = true;
+            }
+
+            Message::CancelQuit => {
+                self.screen = Screen::Chat;
             }
 
             Message::Genie(result) => {
@@ -303,7 +386,12 @@ impl Model {
         });
     }
 
-    fn hide_suggestions(&mut self) {
+    fn collapse_suggestions(&mut self) {
+        self.show_suggestions = false;
+        self.suggestion_idx = None;
+    }
+
+    fn clear_suggestions(&mut self) {
         self.suggestions.clear();
         self.suggestion_idx = None;
         self.show_suggestions = false;
@@ -362,17 +450,33 @@ impl Model {
         match result {
             Ok(msg) => {
                 for att in &msg.attachments {
+                    // Text attachment (may contain additional explanatory text)
                     if let Some(t) = &att.text {
                         if let Some(c) = &t.content {
-                            self.chat.push(ChatEntry::Assistant(c.clone()));
+                            if !c.trim().is_empty() {
+                                self.chat.push(ChatEntry::Assistant(c.clone()));
+                            }
                         }
                     }
+                    // Query attachment
                     if let Some(q) = &att.query {
+                        // Title or description may contain the assistant's explanation
+                        if let Some(title) = &q.title {
+                            if !title.trim().is_empty() {
+                                self.chat.push(ChatEntry::Assistant(title.clone()));
+                            }
+                        }
+                        if let Some(desc) = &q.description {
+                            if !desc.trim().is_empty() {
+                                self.chat.push(ChatEntry::Assistant(desc.clone()));
+                            }
+                        }
                         if let Some(query) = &q.query {
                             self.chat.push(ChatEntry::Sql(query.clone()));
                             sql = Some(query.clone());
                         }
                     }
+                    // Suggested follow-up questions
                     if let Some(s) = &att.suggested_questions {
                         self.suggestions = s.questions.clone();
                         self.show_suggestions = !self.suggestions.is_empty();

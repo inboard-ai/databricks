@@ -16,7 +16,7 @@ const USER_BG: Color = Color::Rgb(0x2a, 0x2a, 0x2a);
 const SPLASH: &[&str] = &[
     "░█░░█▀▀▄░█▀▄▀█░▄▀▀▄",
     "░█░░█▄▄█░█░▀░█░█▄▄█",
-    "░▀▀░▀░░▀░▀░░▒▀░█░░░",
+    "░▀▀░▀░░▀░▀░░░▀░█░░░",
 ];
 
 fn splash_line(s: &str) -> Line<'static> {
@@ -40,7 +40,42 @@ pub fn view(frame: &mut Frame, model: &Model) -> u16 {
             0
         }
         Screen::Chat => draw_chat_screen(frame, model),
+        Screen::QuitConfirm => {
+            let max_scroll = draw_chat_screen(frame, model);
+            draw_quit_confirm(frame);
+            max_scroll
+        }
     }
+}
+
+fn draw_quit_confirm(frame: &mut Frame) {
+    let area = frame.area();
+
+    // Center a small dialog
+    let w = 30u16;
+    let h = 5u16;
+    let x = area.x + (area.width.saturating_sub(w)) / 2;
+    let y = area.y + (area.height.saturating_sub(h)) / 2;
+    let dialog = Rect::new(x, y, w, h);
+
+    frame.render_widget(Clear, dialog);
+
+    let text = Text::from(vec![
+        Line::from(""),
+        Line::from("  Exit? (Y/n)"),
+        Line::from(""),
+    ]);
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(DIM))
+        .title(" Confirm ");
+
+    let paragraph = Paragraph::new(text)
+        .block(block)
+        .style(Style::default().fg(Color::White));
+
+    frame.render_widget(paragraph, dialog);
 }
 
 fn draw_space_select(frame: &mut Frame, spaces: &[crate::app::Space], selected: usize) {
@@ -239,6 +274,13 @@ fn draw_chat(frame: &mut Frame, model: &Model, area: Rect) -> u16 {
 }
 
 fn draw_input(frame: &mut Frame, model: &Model, area: Rect) {
+    // Split input area: input line + status line
+    let chunks = Layout::vertical([
+        Constraint::Length(2), // border + input
+        Constraint::Length(1), // status line
+    ])
+    .split(area);
+
     let input_text = format!("> {}", model.input);
 
     let input = Paragraph::new(input_text.as_str())
@@ -249,10 +291,34 @@ fn draw_input(frame: &mut Frame, model: &Model, area: Rect) {
         )
         .style(Style::default().fg(Color::White));
 
-    frame.render_widget(input, area);
+    frame.render_widget(input, chunks[0]);
 
-    let cursor_x = area.x + 2 + model.cursor as u16;
-    let cursor_y = area.y + 1;
+    // Status line with controls and suggestion indicator
+    let mut status_spans: Vec<Span> = Vec::new();
+
+    // Suggestion indicator
+    if !model.suggestions.is_empty() {
+        let indicator = if model.show_suggestions {
+            format!(" {} suggestions ", model.suggestions.len())
+        } else {
+            format!(" {} suggestions (↑) ", model.suggestions.len())
+        };
+        status_spans.push(Span::styled(indicator, Style::default().fg(RED)));
+        status_spans.push(Span::styled(" ", Style::default()));
+    }
+
+    // Controls hint
+    status_spans.push(Span::styled(
+        "Enter send · Tab suggestions · Esc Esc quit · /help",
+        Style::default().fg(DIM),
+    ));
+
+    let status_line = Line::from(status_spans);
+    let status = Paragraph::new(status_line);
+    frame.render_widget(status, chunks[1]);
+
+    let cursor_x = chunks[0].x + 2 + model.cursor as u16;
+    let cursor_y = chunks[0].y + 1;
     frame.set_cursor_position((cursor_x, cursor_y));
 }
 

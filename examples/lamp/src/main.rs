@@ -107,7 +107,5 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     stdout().execute(LeaveAlternateScreen)?;
     stdout().execute(DisableMouseCapture)?;
 
-    println!("\nGoodbye!\n");
-
     Ok(())
 }

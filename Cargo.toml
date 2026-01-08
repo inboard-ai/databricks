@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["databricks", "core", "sql", "genie"]
+members = ["databricks", "core", "sql", "genie", "examples/*"]
 
 [workspace.package]
 edition = "2021"

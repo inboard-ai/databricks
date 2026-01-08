@@ -1,0 +1,13 @@
+[package]
+name = "lamp"
+version = "0.1.0"
+edition = "2021"
+description = "Rub the lamp to summon Databricks Genie"
+
+[dependencies]
+databricks = { path = "../../databricks" }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
+ratatui = "0.29"
+crossterm = "0.28"
+inquire = "0.7"
+comfy-table = "7"

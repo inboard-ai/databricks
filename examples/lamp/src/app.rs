@@ -22,6 +22,9 @@ pub enum Message {
     ConfirmQuit,  // Actually quit
     CancelQuit,   // Go back to chat
 
+    // Animation
+    Tick,
+
     // Async results
     Genie(Result<genie::Message, databricks::Error>),
     Sql(Result<sql::Response, databricks::Error>),
@@ -79,6 +82,7 @@ pub struct Model {
     // State
     pub status: Status,
     pub quit: bool,
+    pub animation_tick: u8,
     conversation_id: Option<String>,
     last_esc: Option<Instant>,
 
@@ -108,6 +112,7 @@ impl Model {
             show_suggestions: false,
             status: Status::Idle,
             quit: false,
+            animation_tick: 0,
             conversation_id: None,
             last_esc: None,
             client,
@@ -337,6 +342,10 @@ impl Model {
 
             Message::CancelQuit => {
                 self.screen = Screen::Chat;
+            }
+
+            Message::Tick => {
+                self.animation_tick = self.animation_tick.wrapping_add(1);
             }
 
             Message::Genie(result) => {

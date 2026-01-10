@@ -33,6 +33,28 @@ fn splash_line(s: &str) -> Line<'static> {
     Line::from(spans)
 }
 
+fn animated_status_line(text: &str, tick: u8) -> Line<'static> {
+    // Subtle grayscale shimmer centered around DIM (0x60)
+    const GRAYS: [u8; 6] = [0x55, 0x60, 0x70, 0x80, 0x70, 0x60];
+
+    let spans: Vec<Span> = text
+        .chars()
+        .enumerate()
+        .map(|(i, c)| {
+            // Subtract tick to spin the other direction, divide to slow down
+            let idx = (i.wrapping_sub(tick as usize / 2)) % GRAYS.len();
+            let gray = GRAYS[idx];
+            Span::styled(
+                c.to_string(),
+                Style::default()
+                    .fg(Color::Rgb(gray, gray, gray))
+                    .add_modifier(Modifier::ITALIC),
+            )
+        })
+        .collect();
+    Line::from(spans)
+}
+
 pub fn view(frame: &mut Frame, model: &Model) -> u16 {
     match &model.screen {
         Screen::SelectSpace { spaces, selected } => {
@@ -157,7 +179,7 @@ fn draw_chat(frame: &mut Frame, model: &Model, area: Rect) -> u16 {
         match entry {
             ChatEntry::User(text) => {
                 lines.push(Line::from(""));
-                let padded = format!(" {} ", text);
+                let padded = format!("{} ", text);
                 let display = if padded.len() < width {
                     format!("{:width$}", padded, width = width)
                 } else {
@@ -245,17 +267,11 @@ fn draw_chat(frame: &mut Frame, model: &Model, area: Rect) -> u16 {
     match model.status {
         Status::Thinking => {
             lines.push(Line::from(""));
-            lines.push(Line::from(Span::styled(
-                "Thinking...",
-                Style::default().fg(DIM).add_modifier(Modifier::ITALIC),
-            )));
+            lines.push(animated_status_line("Thinking...", model.animation_tick));
         }
         Status::Running => {
             lines.push(Line::from(""));
-            lines.push(Line::from(Span::styled(
-                "Running...",
-                Style::default().fg(DIM).add_modifier(Modifier::ITALIC),
-            )));
+            lines.push(animated_status_line("Running...", model.animation_tick));
         }
         Status::Idle => {}
     }

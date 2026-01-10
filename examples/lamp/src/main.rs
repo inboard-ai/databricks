@@ -94,6 +94,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
 
+        // Tick for animation while thinking/running
+        if model.status != app::Status::Idle {
+            model.update(Message::Tick);
+        }
+
         while let Ok(m) = rx.try_recv() {
             let mut msg = Some(m);
             while let Some(m) = msg {

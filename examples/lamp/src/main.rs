@@ -1,4 +1,5 @@
 mod app;
+mod table;
 mod ui;
 
 use std::collections::HashMap;

@@ -7,6 +7,7 @@ use ratatui::{
 };
 
 use crate::app::{ChatEntry, Focus, Model, Screen, Status};
+use crate::table::Table;
 
 const RED: Color = Color::Rgb(0xeb, 0x16, 0x00);
 const RED_DIM: Color = Color::Rgb(0x80, 0x38, 0x30);
@@ -42,6 +43,12 @@ fn splash_line(s: &str) -> Line<'static> {
         .collect();
     Line::from(spans)
 }
+
+/// Get foreground color, possibly dimmed
+fn fg(color: Color, dim: bool) -> Color {
+    if dim { dim_color(color) } else { color }
+}
+
 
 fn animated_status_line(text: &str, tick: u8) -> Line<'static> {
     // Subtle grayscale shimmer centered around DIM (0x60)
@@ -171,194 +178,136 @@ fn draw_chat_screen(frame: &mut Frame, model: &Model) -> u16 {
 }
 
 fn draw_chat(frame: &mut Frame, model: &Model, area: Rect) -> u16 {
-    let mut lines: Vec<Line> = Vec::new();
-    let width = area.width.saturating_sub(2) as usize;
+    // Two-column layout: indicator (2 chars) + content
+    let chunks = Layout::horizontal([
+        Constraint::Length(2),
+        Constraint::Min(0),
+    ])
+    .split(area);
 
-    // Check if we're in chat focus mode
+    let indicator_area = chunks[0];
+    let content_area = chunks[1];
+    let width = content_area.width.saturating_sub(1) as usize;
+    let dim = model.show_suggestions;
+
     let focused_idx = match model.focus {
         Focus::Chat(idx) => Some(idx),
         Focus::Input => None,
     };
 
-    // Splash at top (always normal colors)
+    // Build content lines and track entry start positions
+    let mut lines: Vec<Line> = Vec::new();
+    let mut entry_starts: Vec<usize> = Vec::new(); // line index where each entry starts
+
+    // Splash header
     for line in SPLASH {
         lines.push(splash_line(line));
     }
-    lines.push(Line::from(""));
-    lines.push(Line::from(Span::styled(
-        "Databricks Genie",
-        Style::default().fg(DIM),
-    )));
-    lines.push(Line::from(""));
+    lines.push(Line::raw(""));
+    lines.push(Line::styled("Databricks Genie", Style::default().fg(fg(DIM, dim))));
+    lines.push(Line::raw(""));
 
     for (i, entry) in model.chat.iter().enumerate() {
-        let is_focused = focused_idx == Some(i);
-        // Apply dimming when in chat focus mode and this entry is not focused
-        let should_dim = focused_idx.is_some() && !is_focused;
+        lines.push(Line::raw("")); // blank line before entry
+        entry_starts.push(lines.len()); // mark where this entry's content starts
 
         match entry {
             ChatEntry::User(text) => {
-                lines.push(Line::from(""));
-                let padded = format!("{} ", text);
-                let display = if padded.len() < width {
-                    format!("{:width$}", padded, width = width)
+                let bg = fg(USER_BG, dim);
+                let text_fg = fg(Color::White, dim);
+                let padded = if text.len() < width {
+                    format!("{:w$}", text, w = width)
                 } else {
-                    padded
+                    text.clone()
                 };
-                let bg = if should_dim { dim_color(USER_BG) } else { USER_BG };
-                lines.push(Line::from(Span::styled(display, Style::default().bg(bg))));
+                lines.push(Line::styled(padded, Style::default().fg(text_fg).bg(bg)));
             }
             ChatEntry::Assistant(text) => {
-                lines.push(Line::from(""));
-                let fg = if should_dim { dim_color(Color::White) } else { Color::White };
+                let text_fg = fg(Color::White, dim);
                 for line in text.lines() {
-                    lines.push(Line::from(Span::styled(line.to_string(), Style::default().fg(fg))));
+                    lines.push(Line::styled(line.to_string(), Style::default().fg(text_fg)));
                 }
             }
             ChatEntry::Table { sql, headers, rows, expanded } => {
-                lines.push(Line::from(""));
+                let border_fg = fg(DIM, dim);
+                let header_fg = fg(Color::White, dim);
+                let row_fg = fg(Color::Gray, dim);
+                let hint_fg = fg(DIM, dim);
 
-                // Show SQL if expanded
+                // SQL expansion
                 if *expanded {
                     if let Some(sql_text) = sql {
-                        let sql_dim = if should_dim { dim_color(DIM) } else { DIM };
-                        let sql_fg = if should_dim { dim_color(Color::White) } else { Color::White };
-                        lines.push(Line::from(Span::styled("SQL:", Style::default().fg(sql_dim))));
-                        for line in sql_text.lines() {
-                            lines.push(Line::from(Span::styled(
-                                format!("  {line}"),
+                        lines.push(Line::styled("SQL:", Style::default().fg(fg(DIM, dim))));
+                        let sql_fg = fg(Color::White, dim);
+                        for sql_line in sql_text.lines() {
+                            lines.push(Line::styled(
+                                format!("  {sql_line}"),
                                 Style::default().fg(sql_fg),
-                            )));
+                            ));
                         }
-                        lines.push(Line::from(""));
+                        lines.push(Line::raw(""));
                     }
                 }
 
-                // Calculate column widths
-                let mut widths: Vec<usize> = headers.iter().map(|h| h.len()).collect();
-                for row in rows {
-                    for (j, cell) in row.iter().enumerate() {
-                        if j < widths.len() {
-                            widths[j] = widths[j].max(cell.len());
-                        }
-                    }
-                }
+                // Render table
+                let table = Table::new(headers, rows);
+                lines.extend(table.render(border_fg, header_fg, row_fg));
 
-                // Colors based on focus
-                let border_fg = if should_dim { dim_color(DIM) } else { DIM };
-                let header_fg = if should_dim { dim_color(Color::White) } else { Color::White };
-                let row_fg = if should_dim { dim_color(Color::Gray) } else { Color::Gray };
-
-                // Top border
-                let top: String = widths
-                    .iter()
-                    .map(|w| "─".repeat(w + 2))
-                    .collect::<Vec<_>>()
-                    .join("┬");
-                lines.push(Line::from(Span::styled(
-                    format!("┌{top}┐"),
-                    Style::default().fg(border_fg),
-                )));
-
-                // Header row - mix border color for │ and header color for text
-                let mut header_spans: Vec<Span> = vec![Span::styled("│", Style::default().fg(border_fg))];
-                for (j, (h, w)) in headers.iter().zip(&widths).enumerate() {
-                    if j > 0 {
-                        header_spans.push(Span::styled("│", Style::default().fg(border_fg)));
-                    }
-                    header_spans.push(Span::styled(
-                        format!(" {h:w$} "),
-                        Style::default().fg(header_fg).add_modifier(Modifier::BOLD),
-                    ));
-                }
-                header_spans.push(Span::styled("│", Style::default().fg(border_fg)));
-                lines.push(Line::from(header_spans));
-
-                // Separator
-                let sep: String = widths
-                    .iter()
-                    .map(|w| "─".repeat(w + 2))
-                    .collect::<Vec<_>>()
-                    .join("┼");
-                lines.push(Line::from(Span::styled(
-                    format!("├{sep}┤"),
-                    Style::default().fg(border_fg),
-                )));
-
-                // Data rows - mix border color for │ and row color for text
-                for row in rows {
-                    let mut row_spans: Vec<Span> = vec![Span::styled("│", Style::default().fg(border_fg))];
-                    for (j, (cell, w)) in row.iter().zip(&widths).enumerate() {
-                        if j > 0 {
-                            row_spans.push(Span::styled("│", Style::default().fg(border_fg)));
-                        }
-                        row_spans.push(Span::styled(
-                            format!(" {cell:w$} "),
-                            Style::default().fg(row_fg),
-                        ));
-                    }
-                    row_spans.push(Span::styled("│", Style::default().fg(border_fg)));
-                    lines.push(Line::from(row_spans));
-                }
-
-                // Bottom border
-                let bottom: String = widths
-                    .iter()
-                    .map(|w| "─".repeat(w + 2))
-                    .collect::<Vec<_>>()
-                    .join("┴");
-                lines.push(Line::from(Span::styled(
-                    format!("└{bottom}┘"),
-                    Style::default().fg(border_fg),
-                )));
-
-                // Row count and expand hint
-                let hint_fg = if should_dim { dim_color(DIM) } else { DIM };
-                let hint = if is_focused {
-                    if *expanded {
-                        format!("{} rows · Space to hide SQL", rows.len())
-                    } else if sql.is_some() {
-                        format!("{} rows · Space to show SQL", rows.len())
-                    } else {
-                        format!("{} rows", rows.len())
-                    }
-                } else {
-                    format!("{} rows", rows.len())
+                // Hint
+                let is_focused = focused_idx == Some(i);
+                let hint = match (is_focused, *expanded, sql.is_some()) {
+                    (true, true, _) => format!("{} rows · Space to hide SQL", table.row_count()),
+                    (true, false, true) => format!("{} rows · Space to show SQL", table.row_count()),
+                    _ => format!("{} rows", table.row_count()),
                 };
-                lines.push(Line::from(Span::styled(hint, Style::default().fg(hint_fg))));
+                lines.push(Line::styled(hint, Style::default().fg(hint_fg)));
             }
             ChatEntry::Error(text) => {
-                lines.push(Line::from(""));
-                let fg = if should_dim { dim_color(RED) } else { RED };
-                lines.push(Line::from(Span::styled(
+                lines.push(Line::styled(
                     format!("Error: {text}"),
-                    Style::default().fg(fg),
-                )));
+                    Style::default().fg(fg(RED, dim)),
+                ));
             }
         }
     }
 
     match model.status {
         Status::Thinking => {
-            lines.push(Line::from(""));
+            lines.push(Line::raw(""));
             lines.push(animated_status_line("Thinking...", model.animation_tick));
         }
         Status::Running => {
-            lines.push(Line::from(""));
+            lines.push(Line::raw(""));
             lines.push(animated_status_line("Running...", model.animation_tick));
         }
         Status::Idle => {}
     }
 
     let content_height = lines.len() as u16;
-    let visible_height = area.height;
+    let visible_height = content_area.height;
     let max_scroll = content_height.saturating_sub(visible_height);
+    let scroll = model.scroll.min(max_scroll);
 
+    // Render content
     let paragraph = Paragraph::new(Text::from(lines))
         .wrap(Wrap { trim: false })
-        .scroll((model.scroll.min(max_scroll), 0));
+        .scroll((scroll, 0));
+    frame.render_widget(paragraph, content_area);
 
-    frame.render_widget(paragraph, area);
+    // Render indicator column
+    if let Some(idx) = focused_idx {
+        if let Some(&start_line) = entry_starts.get(idx) {
+            let indicator_y = start_line as u16;
+            if indicator_y >= scroll && indicator_y < scroll + visible_height {
+                let y = indicator_area.y + indicator_y - scroll;
+                let indicator = Paragraph::new(Span::styled("⏺", Style::default().fg(RED)));
+                frame.render_widget(
+                    indicator,
+                    Rect::new(indicator_area.x + 1, y, 1, 1),
+                );
+            }
+        }
+    }
 
     max_scroll
 }

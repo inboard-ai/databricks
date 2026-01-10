@@ -15,6 +15,13 @@ pub enum Message {
     ToggleSuggestions,
     DismissSuggestions,
 
+    // Focus navigation
+    FocusChat,           // Enter chat focus mode (from input)
+    FocusInput,          // Return to input focus
+    FocusUp,             // Move focus up in chat
+    FocusDown,           // Move focus down in chat
+    ToggleExpand,        // Toggle SQL expansion on focused table
+
     // Commands
     Clear,
     Help,
@@ -45,12 +52,22 @@ pub enum Screen {
     QuitConfirm,
 }
 
+#[derive(Clone, Copy, PartialEq)]
+pub enum Focus {
+    Input,
+    Chat(usize),
+}
+
 #[derive(Clone)]
 pub enum ChatEntry {
     User(String),
     Assistant(String),
-    Sql(String),
-    Table { headers: Vec<String>, rows: Vec<Vec<String>> },
+    Table {
+        sql: Option<String>,
+        headers: Vec<String>,
+        rows: Vec<Vec<String>>,
+        expanded: bool,
+    },
     Error(String),
 }
 
@@ -69,6 +86,7 @@ pub struct Model {
     pub chat: Vec<ChatEntry>,
     pub scroll: u16,
     pub max_scroll: u16,
+    pub focus: Focus,
 
     // Input
     pub input: String,
@@ -85,6 +103,7 @@ pub struct Model {
     pub animation_tick: u8,
     conversation_id: Option<String>,
     last_esc: Option<Instant>,
+    pending_sql: Option<String>,
 
     // Resources
     client: Arc<Client>,
@@ -105,6 +124,7 @@ impl Model {
             chat: Vec::new(),
             scroll: 0,
             max_scroll: 0,
+            focus: Focus::Input,
             input: String::new(),
             cursor: 0,
             suggestions: Vec::new(),
@@ -115,6 +135,7 @@ impl Model {
             animation_tick: 0,
             conversation_id: None,
             last_esc: None,
+            pending_sql: None,
             client,
             space_id: None,
             warehouse_id,
@@ -172,7 +193,15 @@ impl Model {
     }
 
     fn handle_chat_event(&mut self, key: event::KeyEvent) -> Option<Message> {
-        // When showing suggestions, arrow keys navigate them
+        // Route based on focus state
+        match self.focus {
+            Focus::Input => self.handle_input_focus(key),
+            Focus::Chat(_) => self.handle_chat_focus(key),
+        }
+    }
+
+    fn handle_input_focus(&mut self, key: event::KeyEvent) -> Option<Message> {
+        // When suggestions popup is showing, it takes priority for navigation
         if self.show_suggestions {
             match key.code {
                 KeyCode::Up => {
@@ -208,7 +237,6 @@ impl Model {
             return None;
         }
 
-        // Input handling
         match key.code {
             KeyCode::Char(c) if !key.modifiers.contains(KeyModifiers::CONTROL) => {
                 self.input.insert(self.cursor, c);
@@ -226,11 +254,10 @@ impl Model {
             KeyCode::Home => self.cursor = 0,
             KeyCode::End => self.cursor = self.input.len(),
             KeyCode::Up => {
-                // If suggestions exist but are collapsed, show them
-                if !self.suggestions.is_empty() && !self.show_suggestions {
-                    return Some(Message::ToggleSuggestions);
+                // Enter chat focus mode (suggestions only via Tab)
+                if !self.chat.is_empty() {
+                    return Some(Message::FocusChat);
                 }
-                return Some(Message::Scroll(-3));
             }
             KeyCode::Down => return Some(Message::Scroll(3)),
             KeyCode::PageUp => return Some(Message::Scroll(-10)),
@@ -241,7 +268,6 @@ impl Model {
             KeyCode::Enter if self.status == Status::Idle => {
                 let text = self.input.trim();
                 if !text.is_empty() {
-                    // Check for commands
                     if let Some(msg) = self.parse_command(text) {
                         self.input.clear();
                         self.cursor = 0;
@@ -256,6 +282,24 @@ impl Model {
             _ => {}
         }
 
+        None
+    }
+
+    fn handle_chat_focus(&mut self, key: event::KeyEvent) -> Option<Message> {
+        match key.code {
+            KeyCode::Up => return Some(Message::FocusUp),
+            KeyCode::Down => return Some(Message::FocusDown),
+            KeyCode::Char(' ') => return Some(Message::ToggleExpand),
+            KeyCode::Esc => return Some(Message::FocusInput),
+            KeyCode::Enter => return Some(Message::FocusInput),
+            // Any other character returns to input and types it
+            KeyCode::Char(c) if !key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.focus = Focus::Input;
+                self.input.insert(self.cursor, c);
+                self.cursor += 1;
+            }
+            _ => {}
+        }
         None
     }
 
@@ -317,6 +361,44 @@ impl Model {
 
             Message::DismissSuggestions => {
                 self.collapse_suggestions();
+            }
+
+            Message::FocusChat => {
+                // Enter chat focus mode on last entry
+                if !self.chat.is_empty() {
+                    self.focus = Focus::Chat(self.chat.len() - 1);
+                }
+            }
+
+            Message::FocusInput => {
+                self.focus = Focus::Input;
+            }
+
+            Message::FocusUp => {
+                if let Focus::Chat(idx) = self.focus {
+                    if idx > 0 {
+                        self.focus = Focus::Chat(idx - 1);
+                    }
+                }
+            }
+
+            Message::FocusDown => {
+                if let Focus::Chat(idx) = self.focus {
+                    if idx + 1 < self.chat.len() {
+                        self.focus = Focus::Chat(idx + 1);
+                    } else {
+                        // At bottom, return to input
+                        self.focus = Focus::Input;
+                    }
+                }
+            }
+
+            Message::ToggleExpand => {
+                if let Focus::Chat(idx) = self.focus {
+                    if let Some(ChatEntry::Table { expanded, .. }) = self.chat.get_mut(idx) {
+                        *expanded = !*expanded;
+                    }
+                }
             }
 
             Message::Clear => {
@@ -481,7 +563,8 @@ impl Model {
                             }
                         }
                         if let Some(query) = &q.query {
-                            self.chat.push(ChatEntry::Sql(query.clone()));
+                            // Store SQL to attach to table result, don't push as separate entry
+                            self.pending_sql = Some(query.clone());
                             sql = Some(query.clone());
                         }
                     }
@@ -503,6 +586,8 @@ impl Model {
     }
 
     fn apply_sql_result(&mut self, result: Result<sql::Response, databricks::Error>) {
+        let sql = self.pending_sql.take();
+
         match result {
             Ok(resp) => {
                 let headers: Vec<String> = resp
@@ -528,7 +613,12 @@ impl Model {
                     .unwrap_or_default();
 
                 if !headers.is_empty() || !rows.is_empty() {
-                    self.chat.push(ChatEntry::Table { headers, rows });
+                    self.chat.push(ChatEntry::Table {
+                        sql,
+                        headers,
+                        rows,
+                        expanded: false,
+                    });
                 }
             }
             Err(e) => {

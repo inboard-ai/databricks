@@ -6,7 +6,7 @@ use ratatui::{
     Frame,
 };
 
-use crate::app::{ChatEntry, Model, Screen, Status};
+use crate::app::{ChatEntry, Focus, Model, Screen, Status};
 
 const RED: Color = Color::Rgb(0xeb, 0x16, 0x00);
 const RED_DIM: Color = Color::Rgb(0x80, 0x38, 0x30);
@@ -18,6 +18,16 @@ const SPLASH: &[&str] = &[
     "░█░░█▄▄█░█░▀░█░█▄▄█",
     "░▀▀░▀░░▀░▀░░░▀░█░░░",
 ];
+
+/// Dim a color for unfocused entries
+fn dim_color(color: Color) -> Color {
+    match color {
+        Color::Rgb(r, g, b) => Color::Rgb(r / 2, g / 2, b / 2),
+        Color::White => Color::Rgb(0x60, 0x60, 0x60),
+        Color::Gray => Color::Rgb(0x40, 0x40, 0x40),
+        _ => color,
+    }
+}
 
 fn splash_line(s: &str) -> Line<'static> {
     let spans: Vec<Span> = s
@@ -164,7 +174,13 @@ fn draw_chat(frame: &mut Frame, model: &Model, area: Rect) -> u16 {
     let mut lines: Vec<Line> = Vec::new();
     let width = area.width.saturating_sub(2) as usize;
 
-    // Splash at top
+    // Check if we're in chat focus mode
+    let focused_idx = match model.focus {
+        Focus::Chat(idx) => Some(idx),
+        Focus::Input => None,
+    };
+
+    // Splash at top (always normal colors)
     for line in SPLASH {
         lines.push(splash_line(line));
     }
@@ -175,7 +191,11 @@ fn draw_chat(frame: &mut Frame, model: &Model, area: Rect) -> u16 {
     )));
     lines.push(Line::from(""));
 
-    for entry in &model.chat {
+    for (i, entry) in model.chat.iter().enumerate() {
+        let is_focused = focused_idx == Some(i);
+        // Apply dimming when in chat focus mode and this entry is not focused
+        let should_dim = focused_idx.is_some() && !is_focused;
+
         match entry {
             ChatEntry::User(text) => {
                 lines.push(Line::from(""));
@@ -185,47 +205,76 @@ fn draw_chat(frame: &mut Frame, model: &Model, area: Rect) -> u16 {
                 } else {
                     padded
                 };
-                lines.push(Line::from(Span::styled(display, Style::default().bg(USER_BG))));
+                let bg = if should_dim { dim_color(USER_BG) } else { USER_BG };
+                lines.push(Line::from(Span::styled(display, Style::default().bg(bg))));
             }
             ChatEntry::Assistant(text) => {
                 lines.push(Line::from(""));
+                let fg = if should_dim { dim_color(Color::White) } else { Color::White };
                 for line in text.lines() {
-                    lines.push(Line::from(Span::raw(line.to_string())));
+                    lines.push(Line::from(Span::styled(line.to_string(), Style::default().fg(fg))));
                 }
             }
-            ChatEntry::Sql(sql) => {
-                lines.push(Line::from(""));
-                lines.push(Line::from(Span::styled("SQL:", Style::default().fg(DIM))));
-                for line in sql.lines() {
-                    lines.push(Line::from(Span::styled(
-                        format!("  {line}"),
-                        Style::default().fg(Color::White),
-                    )));
-                }
-            }
-            ChatEntry::Table { headers, rows } => {
+            ChatEntry::Table { sql, headers, rows, expanded } => {
                 lines.push(Line::from(""));
 
+                // Show SQL if expanded
+                if *expanded {
+                    if let Some(sql_text) = sql {
+                        let sql_dim = if should_dim { dim_color(DIM) } else { DIM };
+                        let sql_fg = if should_dim { dim_color(Color::White) } else { Color::White };
+                        lines.push(Line::from(Span::styled("SQL:", Style::default().fg(sql_dim))));
+                        for line in sql_text.lines() {
+                            lines.push(Line::from(Span::styled(
+                                format!("  {line}"),
+                                Style::default().fg(sql_fg),
+                            )));
+                        }
+                        lines.push(Line::from(""));
+                    }
+                }
+
+                // Calculate column widths
                 let mut widths: Vec<usize> = headers.iter().map(|h| h.len()).collect();
                 for row in rows {
-                    for (i, cell) in row.iter().enumerate() {
-                        if i < widths.len() {
-                            widths[i] = widths[i].max(cell.len());
+                    for (j, cell) in row.iter().enumerate() {
+                        if j < widths.len() {
+                            widths[j] = widths[j].max(cell.len());
                         }
                     }
                 }
 
-                let header_line: String = headers
+                // Colors based on focus
+                let border_fg = if should_dim { dim_color(DIM) } else { DIM };
+                let header_fg = if should_dim { dim_color(Color::White) } else { Color::White };
+                let row_fg = if should_dim { dim_color(Color::Gray) } else { Color::Gray };
+
+                // Top border
+                let top: String = widths
                     .iter()
-                    .zip(&widths)
-                    .map(|(h, w)| format!(" {h:w$} "))
+                    .map(|w| "─".repeat(w + 2))
                     .collect::<Vec<_>>()
-                    .join("│");
+                    .join("┬");
                 lines.push(Line::from(Span::styled(
-                    format!("│{header_line}│"),
-                    Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
+                    format!("┌{top}┐"),
+                    Style::default().fg(border_fg),
                 )));
 
+                // Header row - mix border color for │ and header color for text
+                let mut header_spans: Vec<Span> = vec![Span::styled("│", Style::default().fg(border_fg))];
+                for (j, (h, w)) in headers.iter().zip(&widths).enumerate() {
+                    if j > 0 {
+                        header_spans.push(Span::styled("│", Style::default().fg(border_fg)));
+                    }
+                    header_spans.push(Span::styled(
+                        format!(" {h:w$} "),
+                        Style::default().fg(header_fg).add_modifier(Modifier::BOLD),
+                    ));
+                }
+                header_spans.push(Span::styled("│", Style::default().fg(border_fg)));
+                lines.push(Line::from(header_spans));
+
+                // Separator
                 let sep: String = widths
                     .iter()
                     .map(|w| "─".repeat(w + 2))
@@ -233,32 +282,57 @@ fn draw_chat(frame: &mut Frame, model: &Model, area: Rect) -> u16 {
                     .join("┼");
                 lines.push(Line::from(Span::styled(
                     format!("├{sep}┤"),
-                    Style::default().fg(DIM),
+                    Style::default().fg(border_fg),
                 )));
 
+                // Data rows - mix border color for │ and row color for text
                 for row in rows {
-                    let row_line: String = row
-                        .iter()
-                        .zip(&widths)
-                        .map(|(cell, w)| format!(" {cell:w$} "))
-                        .collect::<Vec<_>>()
-                        .join("│");
-                    lines.push(Line::from(Span::styled(
-                        format!("│{row_line}│"),
-                        Style::default().fg(Color::Gray),
-                    )));
+                    let mut row_spans: Vec<Span> = vec![Span::styled("│", Style::default().fg(border_fg))];
+                    for (j, (cell, w)) in row.iter().zip(&widths).enumerate() {
+                        if j > 0 {
+                            row_spans.push(Span::styled("│", Style::default().fg(border_fg)));
+                        }
+                        row_spans.push(Span::styled(
+                            format!(" {cell:w$} "),
+                            Style::default().fg(row_fg),
+                        ));
+                    }
+                    row_spans.push(Span::styled("│", Style::default().fg(border_fg)));
+                    lines.push(Line::from(row_spans));
                 }
 
+                // Bottom border
+                let bottom: String = widths
+                    .iter()
+                    .map(|w| "─".repeat(w + 2))
+                    .collect::<Vec<_>>()
+                    .join("┴");
                 lines.push(Line::from(Span::styled(
-                    format!("({} rows)", rows.len()),
-                    Style::default().fg(DIM),
+                    format!("└{bottom}┘"),
+                    Style::default().fg(border_fg),
                 )));
+
+                // Row count and expand hint
+                let hint_fg = if should_dim { dim_color(DIM) } else { DIM };
+                let hint = if is_focused {
+                    if *expanded {
+                        format!("{} rows · Space to hide SQL", rows.len())
+                    } else if sql.is_some() {
+                        format!("{} rows · Space to show SQL", rows.len())
+                    } else {
+                        format!("{} rows", rows.len())
+                    }
+                } else {
+                    format!("{} rows", rows.len())
+                };
+                lines.push(Line::from(Span::styled(hint, Style::default().fg(hint_fg))));
             }
             ChatEntry::Error(text) => {
                 lines.push(Line::from(""));
+                let fg = if should_dim { dim_color(RED) } else { RED };
                 lines.push(Line::from(Span::styled(
                     format!("Error: {text}"),
-                    Style::default().fg(RED),
+                    Style::default().fg(fg),
                 )));
             }
         }
@@ -323,11 +397,12 @@ fn draw_input(frame: &mut Frame, model: &Model, area: Rect) {
         status_spans.push(Span::styled(" ", Style::default()));
     }
 
-    // Controls hint
-    status_spans.push(Span::styled(
-        "Enter send · Tab suggestions · Esc Esc quit · /help",
-        Style::default().fg(DIM),
-    ));
+    // Controls hint based on focus
+    let hint = match model.focus {
+        Focus::Input => "Enter send · ↑ navigate · Tab suggestions · /help",
+        Focus::Chat(_) => "↑↓ navigate · Space expand · Esc return · type to input",
+    };
+    status_spans.push(Span::styled(hint, Style::default().fg(DIM)));
 
     let status_line = Line::from(status_spans);
     let status = Paragraph::new(status_line);

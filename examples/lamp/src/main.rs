@@ -1,4 +1,5 @@
 mod app;
+mod component;
 mod table;
 mod ui;
 
@@ -44,12 +45,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = load_config();
     let host = config.get("DATABRICKS_HOST").expect("DATABRICKS_HOST");
     let token = config.get("DATABRICKS_API_KEY").expect("DATABRICKS_API_KEY");
-    let warehouse_id = config
-        .get("DATABRICKS_WAREHOUSE_ID")
-        .expect("DATABRICKS_WAREHOUSE_ID")
-        .clone();
 
     let client = Arc::new(Client::builder().host(host).token(token).build()?);
+
+    // Fetch warehouses before entering TUI
+    let warehouses_api = databricks::sql::Warehouses::new(&client);
+    let api_warehouses = warehouses_api.list().await?;
+
+    let warehouses: Vec<app::Warehouse> = api_warehouses
+        .into_iter()
+        .map(|w| app::Warehouse {
+            id: w.id,
+            name: w.name,
+            state: w.state,
+        })
+        .collect();
+
+    if warehouses.is_empty() {
+        eprintln!("No SQL warehouses available.");
+        return Ok(());
+    }
 
     // Fetch spaces before entering TUI
     let spaces_api = databricks::genie::Spaces::new(&client);
@@ -78,12 +93,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (tx, mut rx) = mpsc::unbounded_channel::<Message>();
 
     // Model
-    let mut model = Model::new(client, spaces, warehouse_id, tx);
+    let mut model = Model::new(client, warehouses, spaces, tx);
 
     // Main loop
     while !model.quit {
         terminal.draw(|f| {
-            model.max_scroll = ui::view(f, &model);
+            model.chat.max_scroll = ui::view(f, &model);
         })?;
 
         if event::poll(Duration::from_millis(50))? {

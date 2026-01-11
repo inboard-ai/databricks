@@ -1,4 +1,7 @@
-use crate::types::{CreateMessageRequest, Message, StartConversationRequest, StartConversationResponse};
+use crate::types::{
+    CreateMessageRequest, ExecuteQueryResponse, ListMessagesResponse, Message,
+    StartConversationRequest, StartConversationResponse,
+};
 use databricks_core::{Client, Error};
 use std::time::Duration;
 use tokio::time::sleep;
@@ -71,7 +74,7 @@ impl<'a> Conversations<'a> {
         timeout: Duration,
     ) -> Result<Message, Error> {
         let message = self.send(conversation_id, content).await?;
-        self.wait_message(conversation_id, &message.id, poll_interval, timeout)
+        self.wait_message(conversation_id, &message.message_id, poll_interval, timeout)
             .await
     }
 
@@ -121,5 +124,32 @@ impl<'a> Conversations<'a> {
                 }
             }
         }
+    }
+
+    /// Execute a query attachment and get results
+    pub async fn execute_attachment_query(
+        &self,
+        conversation_id: &str,
+        message_id: &str,
+        attachment_id: &str,
+    ) -> Result<ExecuteQueryResponse, Error> {
+        let path = format!(
+            "/api/2.0/genie/spaces/{}/conversations/{}/messages/{}/attachments/{}/execute-query",
+            self.space_id, conversation_id, message_id, attachment_id
+        );
+        self.client.post_empty(&path).await
+    }
+
+    /// List all messages in a conversation
+    pub async fn list_messages(
+        &self,
+        conversation_id: &str,
+    ) -> Result<Vec<Message>, Error> {
+        let path = format!(
+            "/api/2.0/genie/spaces/{}/conversations/{}/messages",
+            self.space_id, conversation_id
+        );
+        let response: ListMessagesResponse = self.client.get(&path).await?;
+        Ok(response.messages)
     }
 }

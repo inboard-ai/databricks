@@ -4,38 +4,39 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::mpsc;
 
+use crate::component::{chat, header, input, suggestion};
+
+// Re-export ChatEntry for ui.rs
+pub use chat::ChatEntry;
+
 pub enum Message {
-    // Space selection
+    // Screen transitions
+    SelectWarehouse(usize),
     SelectSpace(usize),
+    BackToWarehouse,
+    RequestQuit,
+    ConfirmQuit,
+    CancelQuit,
 
-    // Chat actions
-    Submit(String),
-    AcceptSuggestion(usize),
-    Scroll(i16),
-    ToggleSuggestions,
-    DismissSuggestions,
-
-    // Focus navigation
-    FocusChat,           // Enter chat focus mode (from input)
-    FocusInput,          // Return to input focus
-    FocusUp,             // Move focus up in chat
-    FocusDown,           // Move focus down in chat
-    ToggleExpand,        // Toggle SQL expansion on focused table
+    // Delegated to components
+    Input(input::Message),
+    Chat(chat::Message),
+    Suggestion(suggestion::Message),
 
     // Commands
     Clear,
     Help,
-    RequestQuit,  // Show confirmation
-    ConfirmQuit,  // Actually quit
-    CancelQuit,   // Go back to chat
+    Submit(String),
 
     // Animation
     Tick,
 
     // Async results
     Genie(Result<genie::Message, databricks::Error>),
-    Sql(Result<sql::Response, databricks::Error>),
+    Sql { sql: String, result: Result<sql::Response, databricks::Error> },
+    WarehouseStatus(Result<sql::Warehouse, databricks::Error>),
 }
+
 
 #[derive(Clone)]
 pub struct Space {
@@ -43,7 +44,18 @@ pub struct Space {
     pub title: String,
 }
 
+#[derive(Clone)]
+pub struct Warehouse {
+    pub id: String,
+    pub name: String,
+    pub state: sql::State,
+}
+
 pub enum Screen {
+    SelectWarehouse {
+        warehouses: Vec<Warehouse>,
+        selected: usize,
+    },
     SelectSpace {
         spaces: Vec<Space>,
         selected: usize,
@@ -53,22 +65,9 @@ pub enum Screen {
 }
 
 #[derive(Clone, Copy, PartialEq)]
-pub enum Focus {
+pub enum FocusTarget {
     Input,
-    Chat(usize),
-}
-
-#[derive(Clone)]
-pub enum ChatEntry {
-    User(String),
-    Assistant(String),
-    Table {
-        sql: Option<String>,
-        headers: Vec<String>,
-        rows: Vec<Vec<String>>,
-        expanded: bool,
-    },
-    Error(String),
+    Chat,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -82,20 +81,14 @@ pub struct Model {
     // Current screen
     pub screen: Screen,
 
-    // Chat
-    pub chat: Vec<ChatEntry>,
-    pub scroll: u16,
-    pub max_scroll: u16,
-    pub focus: Focus,
+    // Components
+    pub input: input::Model,
+    pub chat: chat::Model,
+    pub suggestion: suggestion::Model,
+    pub header: header::Model,
 
-    // Input
-    pub input: String,
-    pub cursor: usize,
-
-    // Suggestions
-    pub suggestions: Vec<String>,
-    pub suggestion_idx: Option<usize>,
-    pub show_suggestions: bool,
+    // Focus
+    pub focus: FocusTarget,
 
     // State
     pub status: Status,
@@ -103,42 +96,47 @@ pub struct Model {
     pub animation_tick: u8,
     conversation_id: Option<String>,
     last_esc: Option<Instant>,
-    pending_sql: Option<String>,
+    warehouse_check_tick: u8,
 
     // Resources
     client: Arc<Client>,
+    warehouses: Vec<Warehouse>,
+    spaces: Vec<Space>,
     space_id: Option<String>,
-    warehouse_id: String,
+    warehouse_id: Option<String>,
     tx: mpsc::UnboundedSender<Message>,
 }
+
 
 impl Model {
     pub fn new(
         client: Arc<Client>,
+        warehouses: Vec<Warehouse>,
         spaces: Vec<Space>,
-        warehouse_id: String,
         tx: mpsc::UnboundedSender<Message>,
     ) -> Self {
+        let screen = Screen::SelectWarehouse {
+            warehouses: warehouses.clone(),
+            selected: 0,
+        };
         Self {
-            screen: Screen::SelectSpace { spaces, selected: 0 },
-            chat: Vec::new(),
-            scroll: 0,
-            max_scroll: 0,
-            focus: Focus::Input,
-            input: String::new(),
-            cursor: 0,
-            suggestions: Vec::new(),
-            suggestion_idx: None,
-            show_suggestions: false,
+            screen,
+            input: input::Model::new(),
+            chat: chat::Model::new(),
+            suggestion: suggestion::Model::new(),
+            header: header::Model::new(),
+            focus: FocusTarget::Input,
             status: Status::Idle,
             quit: false,
             animation_tick: 0,
             conversation_id: None,
             last_esc: None,
-            pending_sql: None,
+            warehouse_check_tick: 0,
             client,
+            warehouses,
+            spaces,
             space_id: None,
-            warehouse_id,
+            warehouse_id: None,
             tx,
         }
     }
@@ -159,6 +157,30 @@ impl Model {
         }
 
         match &mut self.screen {
+            Screen::SelectWarehouse { warehouses, selected } => {
+                match key.code {
+                    KeyCode::Up => {
+                        *selected = selected.saturating_sub(1);
+                    }
+                    KeyCode::Down => {
+                        *selected = (*selected + 1).min(warehouses.len().saturating_sub(1));
+                    }
+                    KeyCode::Enter => {
+                        return Some(Message::SelectWarehouse(*selected));
+                    }
+                    KeyCode::Esc => {
+                        // Double-ESC to quit at root
+                        if let Some(last) = self.last_esc {
+                            if last.elapsed() < Duration::from_millis(500) {
+                                return Some(Message::RequestQuit);
+                            }
+                        }
+                        self.last_esc = Some(Instant::now());
+                    }
+                    _ => {}
+                }
+                None
+            }
             Screen::SelectSpace { spaces, selected } => {
                 match key.code {
                     KeyCode::Up => {
@@ -171,7 +193,8 @@ impl Model {
                         return Some(Message::SelectSpace(*selected));
                     }
                     KeyCode::Esc => {
-                        return Some(Message::RequestQuit);
+                        // Go back to warehouse selection
+                        return Some(Message::BackToWarehouse);
                     }
                     _ => {}
                 }
@@ -193,41 +216,21 @@ impl Model {
     }
 
     fn handle_chat_event(&mut self, key: event::KeyEvent) -> Option<Message> {
+        // Suggestion takes priority when expanded
+        if self.suggestion.is_expanded() {
+            return self.suggestion.handle_event(key).map(Message::Suggestion);
+        }
+
         // Route based on focus state
         match self.focus {
-            Focus::Input => self.handle_input_focus(key),
-            Focus::Chat(_) => self.handle_chat_focus(key),
+            FocusTarget::Input => self.handle_input_focus(key),
+            FocusTarget::Chat => self.chat.handle_event(key).map(Message::Chat),
         }
     }
 
     fn handle_input_focus(&mut self, key: event::KeyEvent) -> Option<Message> {
-        // When suggestions popup is showing, it takes priority for navigation
-        if self.show_suggestions {
-            match key.code {
-                KeyCode::Up => {
-                    self.prev_suggestion();
-                    return None;
-                }
-                KeyCode::Down => {
-                    self.next_suggestion();
-                    return None;
-                }
-                KeyCode::Enter => {
-                    if let Some(idx) = self.suggestion_idx {
-                        return Some(Message::AcceptSuggestion(idx));
-                    }
-                }
-                KeyCode::Esc => return Some(Message::DismissSuggestions),
-                KeyCode::Tab => return Some(Message::ToggleSuggestions),
-                _ => {
-                    // Collapse but keep suggestions available
-                    self.collapse_suggestions();
-                }
-            }
-        }
-
-        // Double-ESC to quit when idle
-        if key.code == KeyCode::Esc && self.status == Status::Idle && !self.show_suggestions {
+        // Double-ESC to quit (always works, even during query)
+        if key.code == KeyCode::Esc {
             if let Some(last) = self.last_esc {
                 if last.elapsed() < Duration::from_millis(500) {
                     return Some(Message::RequestQuit);
@@ -237,70 +240,50 @@ impl Model {
             return None;
         }
 
+        // Tab toggles suggestions
+        if key.code == KeyCode::Tab && self.suggestion.has_suggestions() {
+            return Some(Message::Suggestion(suggestion::Message::Toggle));
+        }
+
+        // Up arrow focuses chat
+        if key.code == KeyCode::Up && !self.chat.entries.is_empty() {
+            self.chat.focus_last();
+            self.focus = FocusTarget::Chat;
+            return None;
+        }
+
+        // Scroll
         match key.code {
-            KeyCode::Char(c) if !key.modifiers.contains(KeyModifiers::CONTROL) => {
-                self.input.insert(self.cursor, c);
-                self.cursor += 1;
-            }
-            KeyCode::Backspace if self.cursor > 0 => {
-                self.cursor -= 1;
-                self.input.remove(self.cursor);
-            }
-            KeyCode::Delete if self.cursor < self.input.len() => {
-                self.input.remove(self.cursor);
-            }
-            KeyCode::Left if self.cursor > 0 => self.cursor -= 1,
-            KeyCode::Right if self.cursor < self.input.len() => self.cursor += 1,
-            KeyCode::Home => self.cursor = 0,
-            KeyCode::End => self.cursor = self.input.len(),
-            KeyCode::Up => {
-                // Enter chat focus mode (suggestions only via Tab)
-                if !self.chat.is_empty() {
-                    return Some(Message::FocusChat);
-                }
-            }
-            KeyCode::Down => return Some(Message::Scroll(3)),
-            KeyCode::PageUp => return Some(Message::Scroll(-10)),
-            KeyCode::PageDown => return Some(Message::Scroll(10)),
-            KeyCode::Tab if !self.suggestions.is_empty() => {
-                return Some(Message::ToggleSuggestions)
-            }
-            KeyCode::Enter if self.status == Status::Idle => {
-                let text = self.input.trim();
-                if !text.is_empty() {
-                    if let Some(msg) = self.parse_command(text) {
-                        self.input.clear();
-                        self.cursor = 0;
-                        return Some(msg);
-                    }
-                    let question = self.input.clone();
+            KeyCode::PageUp => return Some(Message::Chat(chat::Message::Scroll(-10))),
+            KeyCode::PageDown => return Some(Message::Chat(chat::Message::Scroll(10))),
+            KeyCode::Down => return Some(Message::Chat(chat::Message::Scroll(3))),
+            _ => {}
+        }
+
+        // Enter: commands always work, messages only when idle
+        if key.code == KeyCode::Enter {
+            let text = self.input.text.trim();
+            if !text.is_empty() {
+                // Commands always work (even during query)
+                if let Some(msg) = self.parse_command(text) {
                     self.input.clear();
-                    self.cursor = 0;
-                    return Some(Message::Submit(question));
+                    return Some(msg);
+                }
+                // Messages only when idle
+                if self.status == Status::Idle {
+                    return Some(Message::Input(input::Message::Submit));
                 }
             }
-            _ => {}
+            return None;
         }
 
-        None
-    }
-
-    fn handle_chat_focus(&mut self, key: event::KeyEvent) -> Option<Message> {
-        match key.code {
-            KeyCode::Up => return Some(Message::FocusUp),
-            KeyCode::Down => return Some(Message::FocusDown),
-            KeyCode::Char(' ') => return Some(Message::ToggleExpand),
-            KeyCode::Esc => return Some(Message::FocusInput),
-            KeyCode::Enter => return Some(Message::FocusInput),
-            // Any other character returns to input and types it
-            KeyCode::Char(c) if !key.modifiers.contains(KeyModifiers::CONTROL) => {
-                self.focus = Focus::Input;
-                self.input.insert(self.cursor, c);
-                self.cursor += 1;
-            }
-            _ => {}
+        // Block typing while busy (except commands above)
+        if self.status != Status::Idle {
+            return None;
         }
-        None
+
+        // Delegate to input component
+        self.input.handle_event(key).map(Message::Input)
     }
 
     fn parse_command(&self, input: &str) -> Option<Message> {
@@ -321,97 +304,74 @@ impl Model {
     /// Process a message, optionally return another to chain
     pub fn update(&mut self, msg: Message) -> Option<Message> {
         match msg {
+            Message::SelectWarehouse(idx) => {
+                if let Some(warehouse) = self.warehouses.get(idx) {
+                    self.warehouse_id = Some(warehouse.id.clone());
+                    // Don't set state from list - wait for fresh check
+                    self.spawn_warehouse_check();
+                    // Move to space selection
+                    self.screen = Screen::SelectSpace {
+                        spaces: self.spaces.clone(),
+                        selected: 0,
+                    };
+                }
+            }
+
+            Message::BackToWarehouse => {
+                self.warehouse_id = None;
+                self.header.warehouse_state = None;
+                self.screen = Screen::SelectWarehouse {
+                    warehouses: self.warehouses.clone(),
+                    selected: 0,
+                };
+            }
+
             Message::SelectSpace(idx) => {
                 if let Screen::SelectSpace { spaces, .. } = &self.screen {
                     if let Some(space) = spaces.get(idx) {
                         self.space_id = Some(space.id.clone());
+                        self.header.set_space(space.title.clone(), space.id.clone());
                         self.screen = Screen::Chat;
+                        self.spawn_warehouse_check();
                     }
+                }
+            }
+
+            Message::Input(input_msg) => {
+                if let Some(out) = self.input.update(input_msg) {
+                    return self.handle_input_output(out);
+                }
+            }
+
+            Message::Chat(chat_msg) => {
+                if let Some(out) = self.chat.update(chat_msg) {
+                    return self.handle_chat_output(out);
+                }
+            }
+
+            Message::Suggestion(sugg_msg) => {
+                if let Some(out) = self.suggestion.update(sugg_msg) {
+                    return self.handle_suggestion_output(out);
                 }
             }
 
             Message::Submit(question) => {
                 self.chat.push(ChatEntry::User(question.clone()));
                 self.status = Status::Thinking;
-                self.scroll_to_bottom();
+                self.chat.scroll_to_bottom();
                 self.spawn_genie(question);
-            }
-
-            Message::AcceptSuggestion(idx) => {
-                if let Some(question) = self.suggestions.get(idx).cloned() {
-                    self.clear_suggestions();
-                    return Some(Message::Submit(question));
-                }
-            }
-
-            Message::Scroll(delta) => {
-                if delta < 0 {
-                    self.scroll = self.scroll.saturating_sub((-delta) as u16);
-                } else {
-                    self.scroll = (self.scroll + delta as u16).min(self.max_scroll);
-                }
-            }
-
-            Message::ToggleSuggestions => {
-                self.show_suggestions = !self.show_suggestions;
-                if self.show_suggestions && self.suggestion_idx.is_none() {
-                    self.suggestion_idx = Some(0);
-                }
-            }
-
-            Message::DismissSuggestions => {
-                self.collapse_suggestions();
-            }
-
-            Message::FocusChat => {
-                // Enter chat focus mode on last entry
-                if !self.chat.is_empty() {
-                    self.focus = Focus::Chat(self.chat.len() - 1);
-                }
-            }
-
-            Message::FocusInput => {
-                self.focus = Focus::Input;
-            }
-
-            Message::FocusUp => {
-                if let Focus::Chat(idx) = self.focus {
-                    if idx > 0 {
-                        self.focus = Focus::Chat(idx - 1);
-                    }
-                }
-            }
-
-            Message::FocusDown => {
-                if let Focus::Chat(idx) = self.focus {
-                    if idx + 1 < self.chat.len() {
-                        self.focus = Focus::Chat(idx + 1);
-                    } else {
-                        // At bottom, return to input
-                        self.focus = Focus::Input;
-                    }
-                }
-            }
-
-            Message::ToggleExpand => {
-                if let Focus::Chat(idx) = self.focus {
-                    if let Some(ChatEntry::Table { expanded, .. }) = self.chat.get_mut(idx) {
-                        *expanded = !*expanded;
-                    }
-                }
             }
 
             Message::Clear => {
                 self.chat.clear();
-                self.scroll = 0;
                 self.conversation_id = None;
             }
 
             Message::Help => {
                 self.chat.push(ChatEntry::Assistant(
-                    "Commands:\n  /clear - Clear chat history\n  /exit  - Exit the app\n  /help  - Show this help\n\nShortcuts:\n  Ctrl+C - Exit immediately\n  ESC ESC - Exit with confirmation\n  Tab - Toggle suggestions\n  ↑↓ - Scroll or navigate suggestions".to_string()
+                    "Commands:\n  /clear - Clear chat history\n  /exit  - Exit the app\n  /help  - Show this help\n\nShortcuts:\n  Ctrl+C - Exit immediately\n  ESC ESC - Exit with confirmation\n  Tab - Toggle suggestions\n  ↑↓ - Scroll or navigate".to_string()
                 ));
-                self.scroll_to_bottom();
+                self.chat.scroll_to_bottom();
             }
 
             Message::RequestQuit => {
@@ -428,13 +388,22 @@ impl Model {
 
             Message::Tick => {
                 self.animation_tick = self.animation_tick.wrapping_add(1);
+                // Check warehouse status every ~30 seconds (600 ticks at 50ms each)
+                self.warehouse_check_tick = self.warehouse_check_tick.wrapping_add(1);
+                if self.warehouse_check_tick == 0 {
+                    self.spawn_warehouse_check();
+                }
             }
 
             Message::Genie(result) => {
-                let sql = self.apply_genie_result(result);
-                self.scroll_to_bottom();
+                let sql_query = self.apply_genie_result(result);
+                self.chat.scroll_to_bottom();
 
-                if let Some(query) = sql {
+                if let Some(query) = sql_query {
+                    // If warehouse is stopped, it will auto-start - show Starting
+                    if self.header.warehouse_state == Some(sql::State::Stopped) {
+                        self.header.set_warehouse_state(sql::State::Starting);
+                    }
                     self.status = Status::Running;
                     self.spawn_sql(query);
                 } else {
@@ -442,55 +411,46 @@ impl Model {
                 }
             }
 
-            Message::Sql(result) => {
-                self.apply_sql_result(result);
+            Message::Sql { sql, result } => {
+                self.apply_sql_result(sql, result);
                 self.status = Status::Idle;
-                self.scroll_to_bottom();
+                self.chat.scroll_to_bottom();
+            }
+
+            Message::WarehouseStatus(result) => {
+                if let Ok(warehouse) = result {
+                    self.header.set_warehouse_state(warehouse.state);
+                }
             }
         }
 
         None
     }
 
-    // Helpers
+    // Output handlers for component messages
 
-    fn prev_suggestion(&mut self) {
-        let len = self.suggestions.len();
-        if len == 0 {
-            return;
+    fn handle_input_output(&mut self, out: input::OutMessage) -> Option<Message> {
+        match out {
+            input::OutMessage::Submit(text) => Some(Message::Submit(text)),
         }
-        self.suggestion_idx = Some(match self.suggestion_idx {
-            Some(0) | None => len - 1,
-            Some(i) => i - 1,
-        });
     }
 
-    fn next_suggestion(&mut self) {
-        let len = self.suggestions.len();
-        if len == 0 {
-            return;
+    fn handle_chat_output(&mut self, out: chat::OutMessage) -> Option<Message> {
+        match out {
+            chat::OutMessage::ReturnToInput => {
+                self.focus = FocusTarget::Input;
+                None
+            }
         }
-        self.suggestion_idx = Some(match self.suggestion_idx {
-            None => 0,
-            Some(i) if i + 1 >= len => 0,
-            Some(i) => i + 1,
-        });
     }
 
-    fn collapse_suggestions(&mut self) {
-        self.show_suggestions = false;
-        self.suggestion_idx = None;
+    fn handle_suggestion_output(&mut self, out: suggestion::OutMessage) -> Option<Message> {
+        match out {
+            suggestion::OutMessage::AcceptSuggestion(question) => Some(Message::Submit(question)),
+        }
     }
 
-    fn clear_suggestions(&mut self) {
-        self.suggestions.clear();
-        self.suggestion_idx = None;
-        self.show_suggestions = false;
-    }
-
-    fn scroll_to_bottom(&mut self) {
-        self.scroll = self.max_scroll;
-    }
+    // Async spawning
 
     fn spawn_genie(&self, question: String) {
         let Some(space_id) = self.space_id.clone() else {
@@ -518,9 +478,13 @@ impl Model {
     }
 
     fn spawn_sql(&self, query: String) {
+        let Some(warehouse_id) = self.warehouse_id.clone() else {
+            return;
+        };
+
         let client = self.client.clone();
-        let warehouse_id = self.warehouse_id.clone();
         let tx = self.tx.clone();
+        let sql = query.clone();
 
         tokio::spawn(async move {
             let api = sql::Statements::new(&client);
@@ -528,7 +492,22 @@ impl Model {
             let result = api
                 .execute_wait(&req, Duration::from_secs(1), Duration::from_secs(60))
                 .await;
-            let _ = tx.send(Message::Sql(result));
+            let _ = tx.send(Message::Sql { sql, result });
+        });
+    }
+
+    fn spawn_warehouse_check(&self) {
+        let Some(warehouse_id) = self.warehouse_id.clone() else {
+            return;
+        };
+
+        let client = self.client.clone();
+        let tx = self.tx.clone();
+
+        tokio::spawn(async move {
+            let api = sql::Warehouses::new(&client);
+            let result = api.get(&warehouse_id).await;
+            let _ = tx.send(Message::WarehouseStatus(result));
         });
     }
 
@@ -536,12 +515,12 @@ impl Model {
         &mut self,
         result: Result<genie::Message, databricks::Error>,
     ) -> Option<String> {
-        let mut sql = None;
+        let mut sql_query = None;
 
         match result {
             Ok(msg) => {
                 for att in &msg.attachments {
-                    // Text attachment (may contain additional explanatory text)
+                    // Text attachment
                     if let Some(t) = &att.text {
                         if let Some(c) = &t.content {
                             if !c.trim().is_empty() {
@@ -549,30 +528,22 @@ impl Model {
                             }
                         }
                     }
-                    // Query attachment
+                    // Query attachment - extract SQL to execute via Statements API
                     if let Some(q) = &att.query {
-                        // Title or description may contain the assistant's explanation
-                        if let Some(title) = &q.title {
-                            if !title.trim().is_empty() {
-                                self.chat.push(ChatEntry::Assistant(title.clone()));
-                            }
-                        }
+                        // Show description
                         if let Some(desc) = &q.description {
                             if !desc.trim().is_empty() {
                                 self.chat.push(ChatEntry::Assistant(desc.clone()));
                             }
                         }
+                        // Get the SQL query to execute
                         if let Some(query) = &q.query {
-                            // Store SQL to attach to table result, don't push as separate entry
-                            self.pending_sql = Some(query.clone());
-                            sql = Some(query.clone());
+                            sql_query = Some(query.clone());
                         }
                     }
                     // Suggested follow-up questions
                     if let Some(s) = &att.suggested_questions {
-                        self.suggestions = s.questions.clone();
-                        self.show_suggestions = !self.suggestions.is_empty();
-                        self.suggestion_idx = if self.show_suggestions { Some(0) } else { None };
+                        self.suggestion.set_suggestions(s.questions.clone());
                     }
                 }
                 self.conversation_id = Some(msg.conversation_id);
@@ -582,14 +553,13 @@ impl Model {
             }
         }
 
-        sql
+        sql_query
     }
 
-    fn apply_sql_result(&mut self, result: Result<sql::Response, databricks::Error>) {
-        let sql = self.pending_sql.take();
-
+    fn apply_sql_result(&mut self, sql: String, result: Result<sql::Response, databricks::Error>) {
         match result {
             Ok(resp) => {
+                // Extract column names from manifest
                 let headers: Vec<String> = resp
                     .manifest
                     .as_ref()
@@ -597,6 +567,7 @@ impl Model {
                     .map(|s| s.columns.iter().map(|c| c.name.clone()).collect())
                     .unwrap_or_default();
 
+                // Extract row data - SQL Statements API uses Vec<Vec<Option<String>>>
                 let rows: Vec<Vec<String>> = resp
                     .result
                     .as_ref()
@@ -612,9 +583,10 @@ impl Model {
                     })
                     .unwrap_or_default();
 
+                // Add table to chat with its SQL
                 if !headers.is_empty() || !rows.is_empty() {
                     self.chat.push(ChatEntry::Table {
-                        sql,
+                        sql: Some(sql),
                         headers,
                         rows,
                         expanded: false,

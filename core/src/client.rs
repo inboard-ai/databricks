@@ -33,6 +33,10 @@ impl Client {
         self.request(Method::POST, path, Some(body)).await
     }
 
+    pub async fn post_empty<T: DeserializeOwned>(&self, path: &str) -> Result<T, Error> {
+        self.request(Method::POST, path, Option::<&()>::None).await
+    }
+
     async fn request<B: Serialize, T: DeserializeOwned>(
         &self,
         method: Method,

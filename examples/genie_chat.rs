@@ -70,7 +70,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Status: {:?}", message.status);
 
     for attachment in &message.attachments {
-        // Text response
+        // Text response (if populated by the API)
         if let Some(text) = &attachment.text {
             if let Some(content) = &text.content {
                 println!("\nResponse:\n{}", content);
@@ -79,6 +79,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // SQL query - execute it!
         if let Some(query_attachment) = &attachment.query {
+            // Show query description
+            if let Some(desc) = &query_attachment.description {
+                println!("\n{}", desc);
+            }
+
             if let Some(query) = &query_attachment.query {
                 println!("\nGenerated SQL:\n{}", query);
 

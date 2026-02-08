@@ -62,3 +62,15 @@ pub mod vectorsearch {
 pub mod apps {
     pub use databricks_apps::*;
 }
+
+pub mod settings {
+    pub use databricks_settings::*;
+}
+
+pub mod billing {
+    pub use databricks_billing::*;
+}
+
+pub mod provisioning {
+    pub use databricks_provisioning::*;
+}

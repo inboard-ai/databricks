@@ -50,3 +50,15 @@ pub mod pipelines {
 pub mod ml {
     pub use databricks_ml::*;
 }
+
+pub mod sharing {
+    pub use databricks_sharing::*;
+}
+
+pub mod vectorsearch {
+    pub use databricks_vectorsearch::*;
+}
+
+pub mod apps {
+    pub use databricks_apps::*;
+}

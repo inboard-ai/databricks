@@ -180,4 +180,34 @@ impl Client {
     pub fn model_versions(&self) -> databricks_ml::ModelVersions {
         databricks_ml::ModelVersions::new(self.inner.clone())
     }
+
+    // Sharing services
+
+    pub fn shares(&self) -> databricks_sharing::Shares {
+        databricks_sharing::Shares::new(self.inner.clone())
+    }
+
+    pub fn providers(&self) -> databricks_sharing::Providers {
+        databricks_sharing::Providers::new(self.inner.clone())
+    }
+
+    pub fn recipients(&self) -> databricks_sharing::Recipients {
+        databricks_sharing::Recipients::new(self.inner.clone())
+    }
+
+    // Vector Search services
+
+    pub fn vector_search_endpoints(&self) -> databricks_vectorsearch::Endpoints {
+        databricks_vectorsearch::Endpoints::new(self.inner.clone())
+    }
+
+    pub fn vector_search_indexes(&self) -> databricks_vectorsearch::Indexes {
+        databricks_vectorsearch::Indexes::new(self.inner.clone())
+    }
+
+    // Apps services
+
+    pub fn apps(&self) -> databricks_apps::Apps {
+        databricks_apps::Apps::new(self.inner.clone())
+    }
 }

@@ -17,6 +17,9 @@ databricks_catalog = { path = "../catalog" }
 databricks_serving = { path = "../serving" }
 databricks_pipelines = { path = "../pipelines" }
 databricks_ml = { path = "../ml" }
+databricks_sharing = { path = "../sharing" }
+databricks_vectorsearch = { path = "../vectorsearch" }
+databricks_apps = { path = "../apps" }
 
 [[example]]
 name = "test_connection"

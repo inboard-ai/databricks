@@ -31,11 +31,7 @@ impl Model {
     pub fn set_suggestions(&mut self, suggestions: Vec<String>) {
         self.items = suggestions;
         self.expanded = false; // Default to collapsed
-        self.selected = if self.items.is_empty() {
-            None
-        } else {
-            Some(0)
-        };
+        self.selected = if self.items.is_empty() { None } else { Some(0) };
     }
 
     pub fn handle_event(&self, key: KeyEvent) -> Option<Message> {

@@ -6,7 +6,6 @@ mod ui;
 use std::collections::HashMap;
 use std::fs;
 use std::io::stdout;
-use std::sync::Arc;
 use std::time::Duration;
 
 use crossterm::{
@@ -44,12 +43,14 @@ fn load_config() -> HashMap<String, String> {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = load_config();
     let host = config.get("DATABRICKS_HOST").expect("DATABRICKS_HOST");
-    let token = config.get("DATABRICKS_API_KEY").expect("DATABRICKS_API_KEY");
+    let token = config
+        .get("DATABRICKS_API_KEY")
+        .expect("DATABRICKS_API_KEY");
 
-    let client = Arc::new(Client::builder().host(host).token(token).build()?);
+    let client = Client::builder().host(host).token(token).build()?;
 
     // Fetch warehouses before entering TUI
-    let warehouses_api = databricks::sql::Warehouses::new(&client);
+    let warehouses_api = databricks::sql::Warehouses::new(client.clone());
     let api_warehouses = warehouses_api.list().await?;
 
     let warehouses: Vec<app::Warehouse> = api_warehouses
@@ -67,7 +68,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Fetch spaces before entering TUI
-    let spaces_api = databricks::genie::Spaces::new(&client);
+    let spaces_api = databricks::genie::Spaces::new(client.clone());
     let api_spaces = spaces_api.list().await?;
 
     let spaces: Vec<Space> = api_spaces

@@ -50,9 +50,12 @@ fn splash_line(s: &str) -> Line<'static> {
 
 /// Get foreground color, possibly dimmed
 fn fg(color: Color, dim: bool) -> Color {
-    if dim { dim_color(color) } else { color }
+    if dim {
+        dim_color(color)
+    } else {
+        color
+    }
 }
-
 
 fn animated_status_line(text: &str, tick: u8) -> Line<'static> {
     // Subtle grayscale shimmer centered around DIM (0x60)
@@ -78,7 +81,10 @@ fn animated_status_line(text: &str, tick: u8) -> Line<'static> {
 
 pub fn view(frame: &mut Frame, model: &Model) -> u16 {
     match &model.screen {
-        Screen::SelectWarehouse { warehouses, selected } => {
+        Screen::SelectWarehouse {
+            warehouses,
+            selected,
+        } => {
             draw_warehouse_select(frame, warehouses, *selected);
             0
         }
@@ -149,7 +155,11 @@ fn draw_warehouse_select(frame: &mut Frame, warehouses: &[crate::app::Warehouse]
         };
 
         let bg = if is_selected { USER_BG } else { Color::Reset };
-        let fg = if is_selected { Color::White } else { Color::Gray };
+        let fg = if is_selected {
+            Color::White
+        } else {
+            Color::Gray
+        };
         let prefix = if is_selected { "> " } else { "  " };
 
         lines.push(Line::from(vec![
@@ -172,7 +182,12 @@ fn draw_warehouse_select(frame: &mut Frame, warehouses: &[crate::app::Warehouse]
     let content_width = lines.iter().map(|l| l.width()).max().unwrap_or(40) as u16;
     let x = area.x + (area.width.saturating_sub(content_width)) / 2;
     let y = area.y + (area.height.saturating_sub(content_height)) / 2;
-    let centered = Rect::new(x, y, content_width.min(area.width), content_height.min(area.height));
+    let centered = Rect::new(
+        x,
+        y,
+        content_width.min(area.width),
+        content_height.min(area.height),
+    );
 
     let paragraph = Paragraph::new(Text::from(lines));
     frame.render_widget(paragraph, centered);
@@ -193,7 +208,11 @@ fn draw_space_select(frame: &mut Frame, spaces: &[crate::app::Space], selected: 
     for (i, space) in spaces.iter().enumerate() {
         let is_selected = i == selected;
         let bg = if is_selected { USER_BG } else { Color::Reset };
-        let fg = if is_selected { Color::White } else { Color::Gray };
+        let fg = if is_selected {
+            Color::White
+        } else {
+            Color::Gray
+        };
         let prefix = if is_selected { "> " } else { "  " };
         lines.push(Line::from(Span::styled(
             format!("{}{}", prefix, space.title),
@@ -212,7 +231,12 @@ fn draw_space_select(frame: &mut Frame, spaces: &[crate::app::Space], selected: 
     let content_width = lines.iter().map(|l| l.width()).max().unwrap_or(40) as u16;
     let x = area.x + (area.width.saturating_sub(content_width)) / 2;
     let y = area.y + (area.height.saturating_sub(content_height)) / 2;
-    let centered = Rect::new(x, y, content_width.min(area.width), content_height.min(area.height));
+    let centered = Rect::new(
+        x,
+        y,
+        content_width.min(area.width),
+        content_height.min(area.height),
+    );
 
     let paragraph = Paragraph::new(Text::from(lines));
     frame.render_widget(paragraph, centered);
@@ -221,11 +245,7 @@ fn draw_space_select(frame: &mut Frame, spaces: &[crate::app::Space], selected: 
 fn draw_chat_screen(frame: &mut Frame, model: &Model) -> u16 {
     let area = frame.area();
 
-    let chunks = Layout::vertical([
-        Constraint::Min(5),
-        Constraint::Length(3),
-    ])
-    .split(area);
+    let chunks = Layout::vertical([Constraint::Min(5), Constraint::Length(3)]).split(area);
 
     let max_scroll = draw_chat(frame, model, chunks[0]);
     draw_input(frame, model, chunks[1]);
@@ -242,11 +262,7 @@ fn draw_chat_screen(frame: &mut Frame, model: &Model) -> u16 {
 
 fn draw_chat(frame: &mut Frame, model: &Model, area: Rect) -> u16 {
     // Two-column layout: indicator (2 chars) + content
-    let chunks = Layout::horizontal([
-        Constraint::Length(2),
-        Constraint::Min(0),
-    ])
-    .split(area);
+    let chunks = Layout::horizontal([Constraint::Length(2), Constraint::Min(0)]).split(area);
 
     let indicator_area = chunks[0];
     let content_area = chunks[1];
@@ -286,7 +302,12 @@ fn draw_chat(frame: &mut Frame, model: &Model, area: Rect) -> u16 {
                     lines.push(Line::styled(line.to_string(), Style::default().fg(text_fg)));
                 }
             }
-            ChatEntry::Table { sql, headers, rows, expanded } => {
+            ChatEntry::Table {
+                sql,
+                headers,
+                rows,
+                expanded,
+            } => {
                 let border_fg = fg(DIM, dim);
                 let header_fg = fg(Color::White, dim);
                 let row_fg = fg(Color::Gray, dim);
@@ -315,7 +336,9 @@ fn draw_chat(frame: &mut Frame, model: &Model, area: Rect) -> u16 {
                 let is_focused = focused_idx == Some(i);
                 let hint = match (is_focused, *expanded, sql.is_some()) {
                     (true, true, _) => format!("{} rows · Space to hide SQL", table.row_count()),
-                    (true, false, true) => format!("{} rows · Space to show SQL", table.row_count()),
+                    (true, false, true) => {
+                        format!("{} rows · Space to show SQL", table.row_count())
+                    }
                     _ => format!("{} rows", table.row_count()),
                 };
                 lines.push(Line::styled(hint, Style::default().fg(hint_fg)));
@@ -359,10 +382,7 @@ fn draw_chat(frame: &mut Frame, model: &Model, area: Rect) -> u16 {
             if indicator_y >= scroll && indicator_y < scroll + visible_height {
                 let y = indicator_area.y + indicator_y - scroll;
                 let indicator = Paragraph::new(Span::styled("⏺", Style::default().fg(RED)));
-                frame.render_widget(
-                    indicator,
-                    Rect::new(indicator_area.x + 1, y, 1, 1),
-                );
+                frame.render_widget(indicator, Rect::new(indicator_area.x + 1, y, 1, 1));
             }
         }
     }
@@ -390,7 +410,10 @@ fn draw_header_lines(lines: &mut Vec<Line>, model: &Model) {
                 }
                 1 => {
                     // Line 2: space name
-                    spans.push(Span::styled(space_name.to_string(), Style::default().fg(Color::White)));
+                    spans.push(Span::styled(
+                        space_name.to_string(),
+                        Style::default().fg(Color::White),
+                    ));
                 }
                 2 => {
                     // Line 3: warehouse status (only if known)
@@ -404,7 +427,10 @@ fn draw_header_lines(lines: &mut Vec<Line>, model: &Model) {
                             sql::State::Deleted => (DIM, "Deleted"),
                         };
                         spans.push(Span::styled("●", Style::default().fg(dot_color)));
-                        spans.push(Span::styled(format!(" {}", label), Style::default().fg(DIM)));
+                        spans.push(Span::styled(
+                            format!(" {}", label),
+                            Style::default().fg(DIM),
+                        ));
                     }
                 }
                 _ => {}
@@ -445,12 +471,11 @@ fn draw_input(frame: &mut Frame, model: &Model, area: Rect) {
         Span::styled(model.input.text.clone(), text_style),
     ]);
 
-    let input = Paragraph::new(input_line)
-        .block(
-            Block::default()
-                .borders(Borders::TOP)
-                .border_style(Style::default().fg(DIM)),
-        );
+    let input = Paragraph::new(input_line).block(
+        Block::default()
+            .borders(Borders::TOP)
+            .border_style(Style::default().fg(DIM)),
+    );
 
     frame.render_widget(input, chunks[0]);
 

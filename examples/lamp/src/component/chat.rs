@@ -124,7 +124,6 @@ impl Model {
     pub fn scroll_to_bottom(&mut self) {
         self.scroll = self.max_scroll;
     }
-
 }
 
 impl Default for Model {

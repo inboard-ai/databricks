@@ -28,13 +28,17 @@ fn load_config() -> HashMap<String, String> {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = load_config();
     let host = config.get("DATABRICKS_HOST").expect("DATABRICKS_HOST");
-    let token = config.get("DATABRICKS_API_KEY").expect("DATABRICKS_API_KEY");
-    let warehouse_id = config.get("DATABRICKS_WAREHOUSE_ID").expect("DATABRICKS_WAREHOUSE_ID");
+    let token = config
+        .get("DATABRICKS_API_KEY")
+        .expect("DATABRICKS_API_KEY");
+    let warehouse_id = config
+        .get("DATABRICKS_WAREHOUSE_ID")
+        .expect("DATABRICKS_WAREHOUSE_ID");
 
     let client = Client::builder().host(host).token(token).build()?;
 
     // List available Genie spaces
-    let spaces_api = genie::Spaces::new(&client);
+    let spaces_api = genie::Spaces::new(client.clone());
     let spaces = spaces_api.list().await?;
 
     println!("Available Genie spaces:\n");
@@ -46,7 +50,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Get space ID from CLI arg or use first available
-    let space_id = env::args().nth(1).or_else(|| spaces.first().map(|s| s.space_id.clone()));
+    let space_id = env::args()
+        .nth(1)
+        .or_else(|| spaces.first().map(|s| s.space_id.clone()));
 
     let Some(space_id) = space_id else {
         println!("\nNo Genie spaces available");
@@ -55,12 +61,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("\n--- Starting conversation with space {} ---\n", space_id);
 
-    let conversations = genie::Conversations::new(&client, &space_id);
+    let conversations = genie::Conversations::new(client.clone(), &space_id);
 
     // Get question from CLI arg or use default
-    let question = env::args().nth(2).unwrap_or_else(|| {
-        "What are the top 5 products by total revenue?".to_string()
-    });
+    let question = env::args()
+        .nth(2)
+        .unwrap_or_else(|| "What are the top 5 products by total revenue?".to_string());
     println!("> {}\n", question);
 
     let message = conversations
@@ -89,7 +95,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 // Execute the query
                 println!("\nExecuting...\n");
-                let statements = sql::Statements::new(&client);
+                let statements = sql::Statements::new(client.clone());
                 let request = sql::Request::new(query, warehouse_id);
                 let response = statements
                     .execute_wait(&request, Duration::from_secs(1), Duration::from_secs(60))
@@ -98,7 +104,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 // Print column headers
                 if let Some(manifest) = &response.manifest {
                     if let Some(schema) = &manifest.schema {
-                        let headers: Vec<_> = schema.columns.iter().map(|c| c.name.as_str()).collect();
+                        let headers: Vec<_> =
+                            schema.columns.iter().map(|c| c.name.as_str()).collect();
                         println!("{}", headers.join(" | "));
                         println!("{}", "-".repeat(headers.join(" | ").len()));
                     }
@@ -107,10 +114,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 // Print rows
                 if let Some(result) = &response.result {
                     for row in &result.data_array {
-                        let values: Vec<_> = row
-                            .iter()
-                            .map(|v| v.as_deref().unwrap_or("NULL"))
-                            .collect();
+                        let values: Vec<_> =
+                            row.iter().map(|v| v.as_deref().unwrap_or("NULL")).collect();
                         println!("{}", values.join(" | "));
                     }
                 }

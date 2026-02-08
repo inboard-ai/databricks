@@ -3,12 +3,12 @@ use databricks_core::{Client, Error};
 
 const PATH: &str = "/api/2.0/genie/spaces";
 
-pub struct Spaces<'a> {
-    client: &'a Client,
+pub struct Spaces {
+    client: Client,
 }
 
-impl<'a> Spaces<'a> {
-    pub fn new(client: &'a Client) -> Self {
+impl Spaces {
+    pub fn new(client: Client) -> Self {
         Self { client }
     }
 

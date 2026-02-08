@@ -44,7 +44,11 @@ impl Table {
         lines.push(self.top_border(border_fg));
         lines.push(self.header_line(border_fg, header_fg));
         lines.push(self.separator(border_fg));
-        lines.extend(self.rows.iter().map(|r| self.data_row(r, border_fg, row_fg)));
+        lines.extend(
+            self.rows
+                .iter()
+                .map(|r| self.data_row(r, border_fg, row_fg)),
+        );
         lines.push(self.bottom_border(border_fg));
         lines
     }

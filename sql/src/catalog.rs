@@ -6,13 +6,13 @@ use std::time::Duration;
 const POLL_INTERVAL: Duration = Duration::from_secs(1);
 const TIMEOUT: Duration = Duration::from_secs(30);
 
-pub struct Catalog<'a> {
-    statements: Statements<'a>,
+pub struct Catalog {
+    statements: Statements,
     warehouse_id: String,
 }
 
-impl<'a> Catalog<'a> {
-    pub fn new(statements: Statements<'a>, warehouse_id: impl Into<String>) -> Self {
+impl Catalog {
+    pub fn new(statements: Statements, warehouse_id: impl Into<String>) -> Self {
         Self {
             statements,
             warehouse_id: warehouse_id.into(),
@@ -61,7 +61,7 @@ impl<'a> Catalog<'a> {
                 r.data_array
                     .iter()
                     .filter_map(|row| {
-                        let schema = row.get(0).and_then(|v| v.clone())?;
+                        let schema = row.first().and_then(|v| v.clone())?;
                         let name = row.get(1).and_then(|v| v.clone())?;
                         Some(Table { schema, name })
                     })
@@ -89,7 +89,7 @@ impl<'a> Catalog<'a> {
                 r.data_array
                     .iter()
                     .filter_map(|row| {
-                        let name = row.get(0).and_then(|v| v.clone())?;
+                        let name = row.first().and_then(|v| v.clone())?;
                         let data_type = row.get(1).and_then(|v| v.clone())?;
                         let nullable = row
                             .get(2)

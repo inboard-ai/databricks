@@ -6,13 +6,13 @@ use databricks_core::{Client, Error};
 use std::time::Duration;
 use tokio::time::sleep;
 
-pub struct Conversations<'a> {
-    client: &'a Client,
+pub struct Conversations {
+    client: Client,
     space_id: String,
 }
 
-impl<'a> Conversations<'a> {
-    pub fn new(client: &'a Client, space_id: impl Into<String>) -> Self {
+impl Conversations {
+    pub fn new(client: Client, space_id: impl Into<String>) -> Self {
         Self {
             client,
             space_id: space_id.into(),
@@ -24,7 +24,10 @@ impl<'a> Conversations<'a> {
     }
 
     /// Start a new conversation with an initial message
-    pub async fn start(&self, content: impl Into<String>) -> Result<StartConversationResponse, Error> {
+    pub async fn start(
+        &self,
+        content: impl Into<String>,
+    ) -> Result<StartConversationResponse, Error> {
         let path = format!("/api/2.0/genie/spaces/{}/start-conversation", self.space_id);
         let request = StartConversationRequest {
             content: content.into(),
@@ -103,7 +106,7 @@ impl<'a> Conversations<'a> {
 
         loop {
             if start.elapsed() > timeout {
-                return Err(Error::Other("Genie response timed out".into()));
+                return Err(Error::Timeout("Genie response timed out".into()));
             }
 
             sleep(poll_interval).await;
@@ -141,10 +144,7 @@ impl<'a> Conversations<'a> {
     }
 
     /// List all messages in a conversation
-    pub async fn list_messages(
-        &self,
-        conversation_id: &str,
-    ) -> Result<Vec<Message>, Error> {
+    pub async fn list_messages(&self, conversation_id: &str) -> Result<Vec<Message>, Error> {
         let path = format!(
             "/api/2.0/genie/spaces/{}/conversations/{}/messages",
             self.space_id, conversation_id

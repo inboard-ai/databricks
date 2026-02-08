@@ -20,6 +20,12 @@ pub enum Error {
     #[error("HTTP error: {0}")]
     HttpError(#[from] hyper::http::Error),
 
+    #[error("Timeout: {0}")]
+    Timeout(String),
+
+    #[error("Config error: {0}")]
+    Config(String),
+
     #[error("{0}")]
     Other(String),
 }

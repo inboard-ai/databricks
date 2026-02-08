@@ -1,6 +1,5 @@
 use crossterm::event::{self, Event, KeyCode, KeyModifiers};
 use databricks::{genie, sql, Client};
-use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::mpsc;
 
@@ -33,10 +32,12 @@ pub enum Message {
 
     // Async results
     Genie(Result<genie::Message, databricks::Error>),
-    Sql { sql: String, result: Result<sql::Response, databricks::Error> },
+    Sql {
+        sql: String,
+        result: Result<sql::Response, databricks::Error>,
+    },
     WarehouseStatus(Result<sql::Warehouse, databricks::Error>),
 }
-
 
 #[derive(Clone)]
 pub struct Space {
@@ -99,7 +100,7 @@ pub struct Model {
     warehouse_check_tick: u8,
 
     // Resources
-    client: Arc<Client>,
+    client: Client,
     warehouses: Vec<Warehouse>,
     spaces: Vec<Space>,
     space_id: Option<String>,
@@ -107,10 +108,9 @@ pub struct Model {
     tx: mpsc::UnboundedSender<Message>,
 }
 
-
 impl Model {
     pub fn new(
-        client: Arc<Client>,
+        client: Client,
         warehouses: Vec<Warehouse>,
         spaces: Vec<Space>,
         tx: mpsc::UnboundedSender<Message>,
@@ -157,7 +157,10 @@ impl Model {
         }
 
         match &mut self.screen {
-            Screen::SelectWarehouse { warehouses, selected } => {
+            Screen::SelectWarehouse {
+                warehouses,
+                selected,
+            } => {
                 match key.code {
                     KeyCode::Up => {
                         *selected = selected.saturating_sub(1);
@@ -201,17 +204,13 @@ impl Model {
                 None
             }
             Screen::Chat => self.handle_chat_event(key),
-            Screen::QuitConfirm => {
-                match key.code {
-                    KeyCode::Enter | KeyCode::Char('y') | KeyCode::Char('Y') => {
-                        Some(Message::ConfirmQuit)
-                    }
-                    KeyCode::Esc | KeyCode::Char('n') | KeyCode::Char('N') => {
-                        Some(Message::CancelQuit)
-                    }
-                    _ => None,
+            Screen::QuitConfirm => match key.code {
+                KeyCode::Enter | KeyCode::Char('y') | KeyCode::Char('Y') => {
+                    Some(Message::ConfirmQuit)
                 }
-            }
+                KeyCode::Esc | KeyCode::Char('n') | KeyCode::Char('N') => Some(Message::CancelQuit),
+                _ => None,
+            },
         }
     }
 
@@ -462,11 +461,16 @@ impl Model {
         let tx = self.tx.clone();
 
         tokio::spawn(async move {
-            let api = genie::Conversations::new(&client, &space_id);
+            let api = genie::Conversations::new(client, &space_id);
             let result = match &conv_id {
                 Some(id) => {
-                    api.send_wait(id, &question, Duration::from_secs(2), Duration::from_secs(120))
-                        .await
+                    api.send_wait(
+                        id,
+                        &question,
+                        Duration::from_secs(2),
+                        Duration::from_secs(120),
+                    )
+                    .await
                 }
                 None => {
                     api.start_wait(&question, Duration::from_secs(2), Duration::from_secs(120))
@@ -487,7 +491,7 @@ impl Model {
         let sql = query.clone();
 
         tokio::spawn(async move {
-            let api = sql::Statements::new(&client);
+            let api = sql::Statements::new(client);
             let req = sql::Request::new(&query, &warehouse_id);
             let result = api
                 .execute_wait(&req, Duration::from_secs(1), Duration::from_secs(60))
@@ -505,7 +509,7 @@ impl Model {
         let tx = self.tx.clone();
 
         tokio::spawn(async move {
-            let api = sql::Warehouses::new(&client);
+            let api = sql::Warehouses::new(client);
             let result = api.get(&warehouse_id).await;
             let _ = tx.send(Message::WarehouseStatus(result));
         });
@@ -594,7 +598,8 @@ impl Model {
                 }
             }
             Err(e) => {
-                self.chat.push(ChatEntry::Error(format!("Query failed: {e}")));
+                self.chat
+                    .push(ChatEntry::Error(format!("Query failed: {e}")));
             }
         }
     }

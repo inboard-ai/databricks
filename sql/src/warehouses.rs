@@ -3,12 +3,12 @@ use databricks_core::{Client, Error};
 
 const PATH: &str = "/api/2.0/sql/warehouses";
 
-pub struct Warehouses<'a> {
-    client: &'a Client,
+pub struct Warehouses {
+    client: Client,
 }
 
-impl<'a> Warehouses<'a> {
-    pub fn new(client: &'a Client) -> Self {
+impl Warehouses {
+    pub fn new(client: Client) -> Self {
         Self { client }
     }
 

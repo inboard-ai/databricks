@@ -27,13 +27,17 @@ fn load_config() -> HashMap<String, String> {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = load_config();
     let host = config.get("DATABRICKS_HOST").expect("DATABRICKS_HOST");
-    let token = config.get("DATABRICKS_API_KEY").expect("DATABRICKS_API_KEY");
-    let warehouse_id = config.get("DATABRICKS_WAREHOUSE_ID").expect("DATABRICKS_WAREHOUSE_ID");
+    let token = config
+        .get("DATABRICKS_API_KEY")
+        .expect("DATABRICKS_API_KEY");
+    let warehouse_id = config
+        .get("DATABRICKS_WAREHOUSE_ID")
+        .expect("DATABRICKS_WAREHOUSE_ID");
 
     let client = Client::builder().host(host).token(token).build()?;
 
     // Check warehouse state
-    let warehouses = sql::Warehouses::new(&client);
+    let warehouses = sql::Warehouses::new(client.clone());
     let wh = warehouses.get(warehouse_id).await?;
     println!("Warehouse: {} ({:?})", wh.name, wh.state);
 
@@ -52,7 +56,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    let statements = sql::Statements::new(&client);
+    let statements = sql::Statements::new(client.clone());
     let catalog = sql::Catalog::new(statements, warehouse_id);
 
     // List catalogs
@@ -75,8 +79,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Describe a table
     println!("\nColumns in 'sales_transactions':");
-    for col in catalog.describe_table("samples", "bakehouse", "sales_transactions").await? {
-        println!("  {} ({}){}",
+    for col in catalog
+        .describe_table("samples", "bakehouse", "sales_transactions")
+        .await?
+    {
+        println!(
+            "  {} ({}){}",
             col.name,
             col.data_type,
             if col.nullable { "" } else { " NOT NULL" }
@@ -84,7 +92,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Run a real query
-    let statements = sql::Statements::new(&client);
+    let statements = sql::Statements::new(client);
     println!("\nTop 5 products by revenue:");
     let request = sql::Request::new(
         "SELECT product, SUM(totalPrice) as revenue \

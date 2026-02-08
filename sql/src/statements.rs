@@ -5,12 +5,12 @@ use tokio::time::sleep;
 
 const PATH: &str = "/api/2.0/sql/statements";
 
-pub struct Statements<'a> {
-    client: &'a Client,
+pub struct Statements {
+    client: Client,
 }
 
-impl<'a> Statements<'a> {
-    pub fn new(client: &'a Client) -> Self {
+impl Statements {
+    pub fn new(client: Client) -> Self {
         Self { client }
     }
 
@@ -42,7 +42,8 @@ impl<'a> Statements<'a> {
             return check_response(response);
         }
 
-        self.wait(&response.statement_id, poll_interval, timeout).await
+        self.wait(&response.statement_id, poll_interval, timeout)
+            .await
     }
 
     /// Poll until the statement reaches a terminal state
@@ -56,7 +57,7 @@ impl<'a> Statements<'a> {
 
         loop {
             if start.elapsed() > timeout {
-                return Err(Error::Other("Statement execution timed out".into()));
+                return Err(Error::Timeout("Statement execution timed out".into()));
             }
 
             sleep(poll_interval).await;

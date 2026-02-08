@@ -53,10 +53,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Connecting to Databricks at {}", host);
 
-    let client = Client::builder()
-        .host(host)
-        .token(token)
-        .build()?;
+    let client = Client::builder().host(host).token(token).build()?;
 
     println!("Listing SQL warehouses...\n");
 
@@ -68,7 +65,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         if wh.state == "STOPPED" {
             println!("    -> Starting warehouse {}...", wh.id);
             let _: EmptyResponse = client
-                .post(&format!("/api/2.0/sql/warehouses/{}/start", wh.id), &Empty {})
+                .post(
+                    &format!("/api/2.0/sql/warehouses/{}/start", wh.id),
+                    &Empty {},
+                )
                 .await?;
             println!("    -> Start request sent!");
         }

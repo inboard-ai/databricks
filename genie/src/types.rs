@@ -263,4 +263,3 @@ pub struct ResultValue {
     #[serde(default)]
     pub string_value: Option<String>,
 }
-

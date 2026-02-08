@@ -50,3 +50,7 @@ pub mod pipelines {
 pub mod ml {
     pub use databricks_ml::*;
 }
+
+pub mod dashboards {
+    pub use databricks_dashboards::*;
+}

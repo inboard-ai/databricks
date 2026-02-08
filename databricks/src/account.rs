@@ -38,4 +38,20 @@ impl Client {
     pub fn core_client(&self) -> &CoreClient {
         &self.inner
     }
+
+    // Billing services
+
+    pub fn budgets(&self) -> databricks_billing::Budgets {
+        databricks_billing::Budgets::new(self.inner.clone(), &self.account_id)
+    }
+
+    pub fn usage(&self) -> databricks_billing::Usage {
+        databricks_billing::Usage::new(self.inner.clone(), &self.account_id)
+    }
+
+    // Provisioning services
+
+    pub fn workspaces(&self) -> databricks_provisioning::Workspaces {
+        databricks_provisioning::Workspaces::new(self.inner.clone(), &self.account_id)
+    }
 }

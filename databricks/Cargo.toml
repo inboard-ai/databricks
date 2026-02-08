@@ -17,6 +17,9 @@ databricks_catalog = { path = "../catalog" }
 databricks_serving = { path = "../serving" }
 databricks_pipelines = { path = "../pipelines" }
 databricks_ml = { path = "../ml" }
+databricks_settings = { path = "../settings" }
+databricks_billing = { path = "../billing" }
+databricks_provisioning = { path = "../provisioning" }
 
 [[example]]
 name = "test_connection"

@@ -180,4 +180,18 @@ impl Client {
     pub fn model_versions(&self) -> databricks_ml::ModelVersions {
         databricks_ml::ModelVersions::new(self.inner.clone())
     }
+
+    // Settings services
+
+    pub fn ip_access_lists(&self) -> databricks_settings::IpAccessLists {
+        databricks_settings::IpAccessLists::new(self.inner.clone())
+    }
+
+    pub fn tokens(&self) -> databricks_settings::Tokens {
+        databricks_settings::Tokens::new(self.inner.clone())
+    }
+
+    pub fn workspace_conf(&self) -> databricks_settings::WorkspaceConf {
+        databricks_settings::WorkspaceConf::new(self.inner.clone())
+    }
 }

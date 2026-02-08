@@ -50,3 +50,15 @@ pub mod pipelines {
 pub mod ml {
     pub use databricks_ml::*;
 }
+
+pub mod settings {
+    pub use databricks_settings::*;
+}
+
+pub mod billing {
+    pub use databricks_billing::*;
+}
+
+pub mod provisioning {
+    pub use databricks_provisioning::*;
+}

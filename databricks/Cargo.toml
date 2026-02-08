@@ -8,6 +8,15 @@ license.workspace = true
 databricks_core = { path = "../core" }
 databricks_sql = { path = "../sql" }
 databricks_genie = { path = "../genie" }
+databricks_compute = { path = "../compute" }
+databricks_jobs = { path = "../jobs" }
+databricks_files = { path = "../files" }
+databricks_workspace_api = { path = "../workspace_api" }
+databricks_iam = { path = "../iam" }
+databricks_catalog = { path = "../catalog" }
+databricks_serving = { path = "../serving" }
+databricks_pipelines = { path = "../pipelines" }
+databricks_ml = { path = "../ml" }
 
 [[example]]
 name = "test_connection"

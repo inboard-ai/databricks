@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["databricks", "core", "sql", "genie", "examples/*"]
+members = ["databricks", "core", "sql", "genie", "compute", "jobs", "files", "workspace_api", "iam", "catalog", "serving", "pipelines", "ml", "examples/*"]
 
 [workspace.package]
 edition = "2021"
@@ -8,7 +8,7 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/example/databricks-rs"
 
 [workspace.dependencies]
-tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
 hyper = { version = "1", features = ["client", "http1", "http2"] }
 hyper-util = { version = "0.1", features = ["client", "client-legacy", "http1", "http2", "tokio"] }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "tls12", "ring", "webpki-tokio"] }
@@ -16,3 +16,7 @@ http-body-util = "0.1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
+dirs = "5"
+rand = "0.8"
+async-trait = "0.1"
+base64 = "0.22"

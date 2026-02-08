@@ -1,9 +1,21 @@
+mod alert_types;
+mod alerts;
 mod catalog;
+mod queries;
+mod query_history;
+mod query_history_types;
+mod query_types;
 mod statements;
 mod types;
 mod warehouses;
 
+pub use alert_types::*;
+pub use alerts::Alerts;
 pub use catalog::{Catalog, Column, Table};
+pub use queries::Queries;
+pub use query_history::QueryHistory;
+pub use query_history_types::*;
+pub use query_types::*;
 pub use statements::Statements;
 pub use types::*;
 pub use warehouses::Warehouses;

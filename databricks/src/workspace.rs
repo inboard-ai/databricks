@@ -38,6 +38,18 @@ impl Client {
         databricks_sql::Warehouses::new(self.inner.clone())
     }
 
+    pub fn alerts(&self) -> databricks_sql::Alerts {
+        databricks_sql::Alerts::new(self.inner.clone())
+    }
+
+    pub fn queries(&self) -> databricks_sql::Queries {
+        databricks_sql::Queries::new(self.inner.clone())
+    }
+
+    pub fn query_history(&self) -> databricks_sql::QueryHistory {
+        databricks_sql::QueryHistory::new(self.inner.clone())
+    }
+
     // Genie services
 
     pub fn genie_spaces(&self) -> databricks_genie::Spaces {
@@ -223,5 +235,11 @@ impl Client {
 
     pub fn workspace_conf(&self) -> databricks_settings::WorkspaceConf {
         databricks_settings::WorkspaceConf::new(self.inner.clone())
+    }
+
+    // Dashboard services
+
+    pub fn dashboards(&self) -> databricks_dashboards::Dashboards {
+        databricks_dashboards::Dashboards::new(self.inner.clone())
     }
 }

@@ -74,3 +74,7 @@ pub mod billing {
 pub mod provisioning {
     pub use databricks_provisioning::*;
 }
+
+pub mod dashboards {
+    pub use databricks_dashboards::*;
+}

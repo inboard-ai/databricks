@@ -23,6 +23,7 @@ databricks_apps = { path = "../apps" }
 databricks_settings = { path = "../settings" }
 databricks_billing = { path = "../billing" }
 databricks_provisioning = { path = "../provisioning" }
+databricks_dashboards = { path = "../dashboards" }
 
 [[example]]
 name = "test_connection"

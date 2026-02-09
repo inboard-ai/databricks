@@ -283,6 +283,10 @@ impl Client {
         databricks_sharing::Recipients::new(self.inner.clone())
     }
 
+    pub fn recipient_activation(&self) -> databricks_sharing::RecipientActivation {
+        databricks_sharing::RecipientActivation::new(self.inner.clone())
+    }
+
     // Vector Search services
 
     pub fn vector_search_endpoints(&self) -> databricks_vectorsearch::Endpoints {

@@ -1,4 +1,4 @@
-use crate::types::{CreateVolume, ListVolumesResponse, VolumeInfo};
+use crate::types::{CreateVolume, ListVolumesResponse, UpdateVolume, VolumeInfo};
 use databricks_core::{Client, Error};
 
 const PATH: &str = "/api/2.1/unity-catalog/volumes";
@@ -21,6 +21,11 @@ impl Volumes {
         self.client.get(&path).await
     }
 
+    pub async fn read(&self, full_name: &str) -> Result<VolumeInfo, Error> {
+        let path = format!("{}/{}", PATH, full_name);
+        self.client.get(&path).await
+    }
+
     pub async fn list(
         &self,
         catalog_name: &str,
@@ -34,6 +39,15 @@ impl Volumes {
             )
             .await?;
         Ok(response.volumes)
+    }
+
+    pub async fn update(
+        &self,
+        full_name: &str,
+        request: &UpdateVolume,
+    ) -> Result<VolumeInfo, Error> {
+        let path = format!("{}/{}", PATH, full_name);
+        self.client.patch(&path, request).await
     }
 
     pub async fn delete(&self, full_name: &str) -> Result<(), Error> {

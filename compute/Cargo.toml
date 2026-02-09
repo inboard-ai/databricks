@@ -6,6 +6,7 @@ license.workspace = true
 
 [dependencies]
 databricks_core = { path = "../core" }
+databricks_iam = { path = "../iam" }
 serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true

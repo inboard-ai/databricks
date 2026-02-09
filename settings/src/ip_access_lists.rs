@@ -1,6 +1,6 @@
 use crate::types::{
     CreateIpAccessListRequest, CreateIpAccessListResponse, EmptyResponse, GetIpAccessListResponse,
-    IpAccessList, ListIpAccessListsResponse, UpdateIpAccessListRequest,
+    IpAccessList, ListIpAccessListsResponse, ReplaceIpAccessListRequest, UpdateIpAccessListRequest,
 };
 use databricks_core::{Client, Error};
 
@@ -40,6 +40,14 @@ impl IpAccessLists {
         let _: EmptyResponse = self
             .client
             .patch(&format!("{}/{}", PATH, request.ip_access_list_id), request)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn replace(&self, request: &ReplaceIpAccessListRequest) -> Result<(), Error> {
+        let _: EmptyResponse = self
+            .client
+            .put(&format!("{}/{}", PATH, request.ip_access_list_id), request)
             .await?;
         Ok(())
     }

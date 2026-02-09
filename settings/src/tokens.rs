@@ -1,6 +1,6 @@
 use crate::types::{
-    CreateTokenRequest, CreateTokenResponse, EmptyResponse, ListTokensResponse, RevokeTokenId,
-    TokenInfo,
+    CreateTokenRequest, CreateTokenResponse, EmptyResponse, GetTokenResponse, ListTokensResponse,
+    RevokeTokenId, TokenInfo,
 };
 use databricks_core::{Client, Error};
 
@@ -21,6 +21,16 @@ impl Tokens {
         self.client
             .post(&format!("{}/create", PERSONAL_PATH), request)
             .await
+    }
+
+    /// Get a token by ID.
+    pub async fn get(&self, token_id: &str) -> Result<TokenInfo, Error> {
+        let resp: GetTokenResponse = self
+            .client
+            .get(&format!("{}/tokens/{}", PATH, token_id))
+            .await?;
+        resp.token_info
+            .ok_or_else(|| Error::Other("Missing token_info in response".into()))
     }
 
     /// List all tokens managed by the token management API.

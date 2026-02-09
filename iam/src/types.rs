@@ -175,6 +175,25 @@ pub struct SetPermissions {
     pub access_control_list: Vec<AccessControlRequest>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct UpdatePermissions {
+    pub access_control_list: Vec<AccessControlRequest>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct PermissionLevels {
+    #[serde(default)]
+    pub permission_levels: Vec<PermissionsDescription>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct PermissionsDescription {
+    #[serde(default)]
+    pub permission_level: Option<String>,
+    #[serde(default)]
+    pub description: Option<String>,
+}
+
 // ============================================================================
 // Current User types
 // ============================================================================

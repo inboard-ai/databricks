@@ -98,10 +98,7 @@ impl Experiments {
     }
 
     /// Set a tag on an experiment.
-    pub async fn set_experiment_tag(
-        &self,
-        request: &SetExperimentTagRequest,
-    ) -> Result<(), Error> {
+    pub async fn set_experiment_tag(&self, request: &SetExperimentTagRequest) -> Result<(), Error> {
         let _: EmptyResponse = self
             .client
             .post(&format!("{}/set-experiment-tag", PATH), request)

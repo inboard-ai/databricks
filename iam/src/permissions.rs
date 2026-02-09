@@ -29,10 +29,7 @@ impl Permissions {
         object_type: &str,
         object_id: &str,
     ) -> Result<PermissionLevels, Error> {
-        let path = format!(
-            "{}/{}/{}/permissionLevels",
-            PATH, object_type, object_id
-        );
+        let path = format!("{}/{}/{}/permissionLevels", PATH, object_type, object_id);
         self.client.get(&path).await
     }
 

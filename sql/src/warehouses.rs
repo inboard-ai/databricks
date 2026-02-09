@@ -1,8 +1,8 @@
 use crate::types::{
     CreateWarehouseRequest, CreateWarehouseResponse, EditWarehouseRequest, Empty, EmptyResponse,
     GetWarehousePermissionLevelsResponse, GetWorkspaceWarehouseConfigResponse,
-    ListWarehousesResponse, SetWorkspaceWarehouseConfigRequest, Warehouse,
-    WarehousePermissions, WarehousePermissionsRequest,
+    ListWarehousesResponse, SetWorkspaceWarehouseConfigRequest, Warehouse, WarehousePermissions,
+    WarehousePermissionsRequest,
 };
 use databricks_core::{Client, Error};
 
@@ -73,10 +73,7 @@ impl Warehouses {
         Ok(())
     }
 
-    pub async fn get_permissions(
-        &self,
-        warehouse_id: &str,
-    ) -> Result<WarehousePermissions, Error> {
+    pub async fn get_permissions(&self, warehouse_id: &str) -> Result<WarehousePermissions, Error> {
         let path = format!("{}/{}", PERMISSIONS_PATH, warehouse_id);
         self.client.get(&path).await
     }

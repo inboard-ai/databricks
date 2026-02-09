@@ -1,10 +1,9 @@
 use crate::types::{
-    BuildLogsResponse, CreateEndpoint, Endpoint, EndpointTags,
-    ExternalFunctionRequest, GetServingEndpointPermissionLevelsResponse,
-    ListEndpointsResponse, PatchServingEndpointTags, PutAiGatewayRequest,
-    PutAiGatewayResponse, QueryRequest, QueryResponse, ServerLogsResponse,
-    ServingEndpointPermissions, ServingEndpointPermissionsRequest,
-    UpdateConfig, UpdateNotificationsRequest, UpdateNotificationsResponse,
+    BuildLogsResponse, CreateEndpoint, Endpoint, EndpointTags, ExternalFunctionRequest,
+    GetServingEndpointPermissionLevelsResponse, ListEndpointsResponse, PatchServingEndpointTags,
+    PutAiGatewayRequest, PutAiGatewayResponse, QueryRequest, QueryResponse, ServerLogsResponse,
+    ServingEndpointPermissions, ServingEndpointPermissionsRequest, UpdateConfig,
+    UpdateNotificationsRequest, UpdateNotificationsResponse,
 };
 use databricks_core::{Client, Error};
 

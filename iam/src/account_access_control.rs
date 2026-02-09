@@ -29,11 +29,7 @@ impl AccountAccessControl {
     }
 
     /// Get a rule set by name and etag.
-    pub async fn get_rule_set(
-        &self,
-        name: &str,
-        etag: &str,
-    ) -> Result<RuleSetResponse, Error> {
+    pub async fn get_rule_set(&self, name: &str, etag: &str) -> Result<RuleSetResponse, Error> {
         let path = format!(
             "/api/2.0/preview/accounts/{}/access-control/rule-sets",
             self.account_id

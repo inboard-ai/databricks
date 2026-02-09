@@ -177,10 +177,7 @@ impl Conversations {
 
     /// List conversations in the space.
     pub async fn list_conversations(&self) -> Result<ListConversationsResponse, Error> {
-        let path = format!(
-            "/api/2.0/genie/spaces/{}/conversations",
-            self.space_id
-        );
+        let path = format!("/api/2.0/genie/spaces/{}/conversations", self.space_id);
         self.client.get(&path).await
     }
 

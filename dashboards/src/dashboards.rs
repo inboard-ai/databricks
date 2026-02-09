@@ -127,10 +127,7 @@ impl Dashboards {
     }
 
     /// List schedules for a dashboard.
-    pub async fn list_schedules(
-        &self,
-        dashboard_id: &str,
-    ) -> Result<ListSchedulesResponse, Error> {
+    pub async fn list_schedules(&self, dashboard_id: &str) -> Result<ListSchedulesResponse, Error> {
         let path = format!("{}/{}/schedules", PATH, dashboard_id);
         self.client.get(&path).await
     }

@@ -55,7 +55,7 @@ pub struct UpdateDashboardRequest {
     pub dashboard: Dashboard,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Default, Serialize)]
 pub struct ListDashboardsRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub page_size: Option<i32>,
@@ -65,17 +65,6 @@ pub struct ListDashboardsRequest {
     pub show_trashed: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub view: Option<DashboardView>,
-}
-
-impl Default for ListDashboardsRequest {
-    fn default() -> Self {
-        Self {
-            page_size: None,
-            page_token: None,
-            show_trashed: None,
-            view: None,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Deserialize)]

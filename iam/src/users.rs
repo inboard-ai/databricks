@@ -52,7 +52,9 @@ impl Users {
     }
 
     /// Get password permission levels.
-    pub async fn get_permission_levels(&self) -> Result<GetPasswordPermissionLevelsResponse, Error> {
+    pub async fn get_permission_levels(
+        &self,
+    ) -> Result<GetPasswordPermissionLevelsResponse, Error> {
         let path = format!("{}/permissionLevels", PASSWORD_PERMISSIONS_PATH);
         self.client.get(&path).await
     }

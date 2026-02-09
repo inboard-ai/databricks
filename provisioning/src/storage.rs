@@ -27,10 +27,7 @@ impl Storage {
         self.client.post(&self.base_path(), request).await
     }
 
-    pub async fn get(
-        &self,
-        storage_configuration_id: &str,
-    ) -> Result<StorageConfiguration, Error> {
+    pub async fn get(&self, storage_configuration_id: &str) -> Result<StorageConfiguration, Error> {
         self.client
             .get(&format!(
                 "{}/{}",

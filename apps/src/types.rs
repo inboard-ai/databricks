@@ -179,3 +179,153 @@ pub struct ListAppsResponse {
     #[serde(default)]
     pub next_page_token: Option<String>,
 }
+
+// ============================================================================
+// App update types
+// ============================================================================
+
+#[derive(Debug, Clone, Serialize)]
+pub struct CreateUpdateRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub app: Option<App>,
+    pub update_mask: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AppUpdate {
+    #[serde(default)]
+    pub budget_policy_id: Option<String>,
+    #[serde(default)]
+    pub compute_size: Option<String>,
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub resources: Option<Vec<AppResource>>,
+    #[serde(default)]
+    pub status: Option<serde_json::Value>,
+    #[serde(default)]
+    pub user_api_scopes: Option<Vec<String>>,
+}
+
+// ============================================================================
+// Deployment request/response types
+// ============================================================================
+
+#[derive(Debug, Clone, Serialize)]
+pub struct CreateDeploymentRequest {
+    pub app_deployment: Deployment,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ListDeploymentsResponse {
+    #[serde(default)]
+    pub app_deployments: Vec<Deployment>,
+    #[serde(default)]
+    pub next_page_token: Option<String>,
+}
+
+// ============================================================================
+// Permission types
+// ============================================================================
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AppPermissions {
+    #[serde(default)]
+    pub access_control_list: Option<Vec<AppAccessControlResponse>>,
+    #[serde(default)]
+    pub object_id: Option<String>,
+    #[serde(default)]
+    pub object_type: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AppAccessControlResponse {
+    #[serde(default)]
+    pub all_permissions: Option<Vec<AppPermission>>,
+    #[serde(default)]
+    pub display_name: Option<String>,
+    #[serde(default)]
+    pub group_name: Option<String>,
+    #[serde(default)]
+    pub service_principal_name: Option<String>,
+    #[serde(default)]
+    pub user_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AppPermission {
+    #[serde(default)]
+    pub permission_level: Option<String>,
+    #[serde(default)]
+    pub inherited: Option<bool>,
+    #[serde(default)]
+    pub inherited_from_object: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct AppPermissionsRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub access_control_list: Option<Vec<AppAccessControlRequest>>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct AppAccessControlRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub group_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub permission_level: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service_principal_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AppPermissionLevelsResponse {
+    #[serde(default)]
+    pub permission_levels: Vec<AppPermissionsDescription>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AppPermissionsDescription {
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub permission_level: Option<String>,
+}
+
+// ============================================================================
+// Custom template types
+// ============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CustomTemplate {
+    #[serde(default)]
+    pub creator: Option<String>,
+    #[serde(default)]
+    pub description: Option<String>,
+    pub git_provider: String,
+    pub git_repo: String,
+    #[serde(default)]
+    pub manifest: Option<serde_json::Value>,
+    pub name: String,
+    pub path: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct CreateCustomTemplateRequest {
+    pub template: CustomTemplate,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct UpdateCustomTemplateRequest {
+    pub template: CustomTemplate,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ListCustomTemplatesResponse {
+    #[serde(default)]
+    pub templates: Vec<CustomTemplate>,
+    #[serde(default)]
+    pub next_page_token: Option<String>,
+}

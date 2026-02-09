@@ -75,7 +75,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .into_iter()
         .map(|s| Space {
             id: s.space_id,
-            title: s.title,
+            title: s.title.unwrap_or_default(),
         })
         .collect();
 

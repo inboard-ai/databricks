@@ -88,4 +88,14 @@ impl Client {
     pub fn account_ip_access_lists(&self) -> databricks_settings::AccountIpAccessLists {
         databricks_settings::AccountIpAccessLists::new(self.inner.clone(), &self.account_id)
     }
+
+    // IAM services (account-level)
+
+    pub fn workspace_assignment(&self) -> databricks_iam::WorkspaceAssignment {
+        databricks_iam::WorkspaceAssignment::new(self.inner.clone(), &self.account_id)
+    }
+
+    pub fn account_access_control(&self) -> databricks_iam::AccountAccessControl {
+        databricks_iam::AccountAccessControl::new(self.inner.clone(), &self.account_id)
+    }
 }

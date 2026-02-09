@@ -161,6 +161,10 @@ impl Client {
         databricks_iam::Me::new(self.inner.clone())
     }
 
+    pub fn permission_migration(&self) -> databricks_iam::PermissionMigration {
+        databricks_iam::PermissionMigration::new(self.inner.clone())
+    }
+
     // Catalog services
 
     pub fn catalogs(&self) -> databricks_catalog::Catalogs {

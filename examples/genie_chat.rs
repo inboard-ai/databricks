@@ -43,7 +43,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Available Genie spaces:\n");
     for space in &spaces {
-        println!("  {} - {}", space.space_id, space.title);
+        println!("  {} - {}", space.space_id, space.title.as_deref().unwrap_or("(untitled)"));
         if let Some(desc) = &space.description {
             println!("    {}", desc);
         }

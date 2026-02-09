@@ -1,5 +1,6 @@
 use crate::types::{
-    CreateProvider, EmptyResponse, ListProvidersResponse, ProviderInfo, UpdateProvider,
+    CreateProvider, EmptyResponse, ListProviderSharesResponse, ListProvidersResponse, ProviderInfo,
+    UpdateProvider,
 };
 use databricks_core::{Client, Error};
 
@@ -40,5 +41,10 @@ impl Providers {
     pub async fn delete(&self, name: &str) -> Result<(), Error> {
         let _: EmptyResponse = self.client.delete(&format!("{}/{}", PATH, name)).await?;
         Ok(())
+    }
+
+    /// List shares owned by the specified provider.
+    pub async fn list_shares(&self, name: &str) -> Result<ListProviderSharesResponse, Error> {
+        self.client.get(&format!("{}/{}/shares", PATH, name)).await
     }
 }

@@ -315,6 +315,85 @@ pub struct ListRunsResponse {
 }
 
 // ============================================================================
+// Permission types
+// ============================================================================
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum JobPermissionLevel {
+    CanManage,
+    CanManageRun,
+    CanView,
+    IsOwner,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct JobPermissions {
+    #[serde(default)]
+    pub access_control_list: Option<Vec<JobAccessControlResponse>>,
+    #[serde(default)]
+    pub object_id: Option<String>,
+    #[serde(default)]
+    pub object_type: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct JobAccessControlResponse {
+    #[serde(default)]
+    pub all_permissions: Option<Vec<JobPermission>>,
+    #[serde(default)]
+    pub display_name: Option<String>,
+    #[serde(default)]
+    pub group_name: Option<String>,
+    #[serde(default)]
+    pub service_principal_name: Option<String>,
+    #[serde(default)]
+    pub user_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct JobPermission {
+    #[serde(default)]
+    pub inherited: Option<bool>,
+    #[serde(default)]
+    pub inherited_from_object: Option<Vec<String>>,
+    #[serde(default)]
+    pub permission_level: Option<JobPermissionLevel>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct JobPermissionsRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub access_control_list: Option<Vec<JobAccessControlRequest>>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct JobAccessControlRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub group_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub permission_level: Option<JobPermissionLevel>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service_principal_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct JobPermissionsDescription {
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub permission_level: Option<JobPermissionLevel>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct GetJobPermissionLevelsResponse {
+    #[serde(default)]
+    pub permission_levels: Vec<JobPermissionsDescription>,
+}
+
+// ============================================================================
 // Internal helpers
 // ============================================================================
 
@@ -326,6 +405,17 @@ pub(crate) struct JobId {
 #[derive(Debug, Clone, Serialize)]
 pub(crate) struct RunId {
     pub run_id: i64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub(crate) struct ResetJob {
+    pub job_id: i64,
+    pub new_settings: JobSettings,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub(crate) struct CancelAllRuns {
+    pub job_id: i64,
 }
 
 #[derive(Debug, Clone, Deserialize)]

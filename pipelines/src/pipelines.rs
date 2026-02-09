@@ -1,11 +1,13 @@
 use crate::types::{
-    CreatePipeline, CreatePipelineResponse, EditPipeline, EmptyResponse, GetUpdateResponse,
+    ClonePipelineRequest, ClonePipelineResponse, CreatePipeline, CreatePipelineResponse,
+    EditPipeline, EmptyResponse, GetPipelinePermissionLevelsResponse, GetUpdateResponse,
     ListPipelineEventsResponse, ListPipelinesResponse, ListUpdatesResponse, Pipeline, PipelineId,
-    StartUpdate, StartUpdateResponse,
+    PipelinePermissions, PipelinePermissionsRequest, StartUpdate, StartUpdateResponse,
 };
 use databricks_core::{Client, Error};
 
 const PATH: &str = "/api/2.0/pipelines";
+const PERMISSIONS_PATH: &str = "/api/2.0/permissions/pipelines";
 
 pub struct Pipelines {
     client: Client,
@@ -140,6 +142,59 @@ impl Pipelines {
         let pairs: Vec<(&str, &str)> = query.iter().map(|(k, v)| (*k, v.as_str())).collect();
         self.client
             .get_with_query(&format!("{}/{}/events", PATH, pipeline_id), &pairs)
+            .await
+    }
+
+    /// Clones a pipeline.
+    pub async fn clone(
+        &self,
+        pipeline_id: &str,
+        request: &ClonePipelineRequest,
+    ) -> Result<ClonePipelineResponse, Error> {
+        self.client
+            .post(&format!("{}/{}/clone", PATH, pipeline_id), request)
+            .await
+    }
+
+    /// Get the permissions of a pipeline.
+    pub async fn get_permissions(&self, pipeline_id: &str) -> Result<PipelinePermissions, Error> {
+        self.client
+            .get(&format!("{}/{}", PERMISSIONS_PATH, pipeline_id))
+            .await
+    }
+
+    /// Get the permission levels that a user can have on a pipeline.
+    pub async fn get_permission_levels(
+        &self,
+        pipeline_id: &str,
+    ) -> Result<GetPipelinePermissionLevelsResponse, Error> {
+        self.client
+            .get(&format!(
+                "{}/{}/permissionLevels",
+                PERMISSIONS_PATH, pipeline_id
+            ))
+            .await
+    }
+
+    /// Set permissions on a pipeline, replacing existing permissions.
+    pub async fn set_permissions(
+        &self,
+        pipeline_id: &str,
+        request: &PipelinePermissionsRequest,
+    ) -> Result<PipelinePermissions, Error> {
+        self.client
+            .put(&format!("{}/{}", PERMISSIONS_PATH, pipeline_id), request)
+            .await
+    }
+
+    /// Update the permissions on a pipeline.
+    pub async fn update_permissions(
+        &self,
+        pipeline_id: &str,
+        request: &PipelinePermissionsRequest,
+    ) -> Result<PipelinePermissions, Error> {
+        self.client
+            .patch(&format!("{}/{}", PERMISSIONS_PATH, pipeline_id), request)
             .await
     }
 }

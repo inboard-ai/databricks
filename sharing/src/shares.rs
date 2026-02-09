@@ -1,4 +1,7 @@
-use crate::types::{CreateShare, EmptyResponse, ListSharesResponse, ShareInfo, UpdateShare};
+use crate::types::{
+    CreateShare, EmptyResponse, GetSharePermissionsResponse, ListSharesResponse, ShareInfo,
+    UpdateShare, UpdateSharePermissions,
+};
 use databricks_core::{Client, Error};
 
 const PATH: &str = "/api/2.1/unity-catalog/shares";
@@ -33,6 +36,29 @@ impl Shares {
 
     pub async fn delete(&self, name: &str) -> Result<(), Error> {
         let _: EmptyResponse = self.client.delete(&format!("{}/{}", PATH, name)).await?;
+        Ok(())
+    }
+
+    /// Get the permissions for a share.
+    pub async fn share_permissions(
+        &self,
+        name: &str,
+    ) -> Result<GetSharePermissionsResponse, Error> {
+        self.client
+            .get(&format!("{}/{}/permissions", PATH, name))
+            .await
+    }
+
+    /// Update the permissions on a share.
+    pub async fn update_permissions(
+        &self,
+        name: &str,
+        request: &UpdateSharePermissions,
+    ) -> Result<(), Error> {
+        let _: EmptyResponse = self
+            .client
+            .patch(&format!("{}/{}/permissions", PATH, name), request)
+            .await?;
         Ok(())
     }
 }

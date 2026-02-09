@@ -508,6 +508,109 @@ pub struct ListPipelineEventsResponse {
 }
 
 // ============================================================================
+// Permission types
+// ============================================================================
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum PipelinePermissionLevel {
+    CanManage,
+    CanRun,
+    CanView,
+    IsOwner,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PipelinePermissions {
+    #[serde(default)]
+    pub access_control_list: Option<Vec<PipelineAccessControlResponse>>,
+    #[serde(default)]
+    pub object_id: Option<String>,
+    #[serde(default)]
+    pub object_type: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PipelineAccessControlResponse {
+    #[serde(default)]
+    pub all_permissions: Option<Vec<PipelinePermission>>,
+    #[serde(default)]
+    pub display_name: Option<String>,
+    #[serde(default)]
+    pub group_name: Option<String>,
+    #[serde(default)]
+    pub service_principal_name: Option<String>,
+    #[serde(default)]
+    pub user_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PipelinePermission {
+    #[serde(default)]
+    pub inherited: Option<bool>,
+    #[serde(default)]
+    pub inherited_from_object: Option<Vec<String>>,
+    #[serde(default)]
+    pub permission_level: Option<PipelinePermissionLevel>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct PipelinePermissionsRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub access_control_list: Option<Vec<PipelineAccessControlRequest>>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct PipelineAccessControlRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub group_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub permission_level: Option<PipelinePermissionLevel>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service_principal_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct PipelinePermissionsDescription {
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub permission_level: Option<PipelinePermissionLevel>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct GetPipelinePermissionLevelsResponse {
+    #[serde(default)]
+    pub permission_levels: Vec<PipelinePermissionsDescription>,
+}
+
+// ============================================================================
+// Clone types
+// ============================================================================
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ClonePipelineRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub catalog: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub clone_mode: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub configuration: Option<HashMap<String, String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub target: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ClonePipelineResponse {
+    #[serde(default)]
+    pub pipeline_id: Option<String>,
+}
+
+// ============================================================================
 // Internal helpers
 // ============================================================================
 

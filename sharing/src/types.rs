@@ -298,8 +298,103 @@ pub struct ListRecipientsResponse {
 }
 
 // ============================================================================
+// Provider share types
+// ============================================================================
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ListProviderSharesResponse {
+    #[serde(default)]
+    pub shares: Vec<ProviderShare>,
+    #[serde(default)]
+    pub next_page_token: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ProviderShare {
+    #[serde(default)]
+    pub name: Option<String>,
+}
+
+// ============================================================================
+// Recipient share permission types
+// ============================================================================
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct GetRecipientSharePermissionsResponse {
+    #[serde(default)]
+    pub permissions_out: Vec<ShareToPrivilegeAssignment>,
+    #[serde(default)]
+    pub next_page_token: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ShareToPrivilegeAssignment {
+    #[serde(default)]
+    pub share_name: Option<String>,
+    #[serde(default)]
+    pub privilege_assignments: Option<Vec<PrivilegeAssignment>>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct PrivilegeAssignment {
+    #[serde(default)]
+    pub principal: Option<String>,
+    #[serde(default)]
+    pub privileges: Option<Vec<String>>,
+}
+
+// ============================================================================
+// Share permission types
+// ============================================================================
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct GetSharePermissionsResponse {
+    #[serde(default)]
+    pub privilege_assignments: Vec<PrivilegeAssignment>,
+    #[serde(default)]
+    pub next_page_token: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct UpdateSharePermissions {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub changes: Option<Vec<PermissionsChange>>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct PermissionsChange {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub add: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub principal: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub remove: Option<Vec<String>>,
+}
+
+// ============================================================================
+// Recipient activation types
+// ============================================================================
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RetrieveTokenResponse {
+    #[serde(default, rename = "bearerToken")]
+    pub bearer_token: Option<String>,
+    #[serde(default)]
+    pub endpoint: Option<String>,
+    #[serde(default, rename = "expirationTime")]
+    pub expiration_time: Option<String>,
+    #[serde(default, rename = "shareCredentialsVersion")]
+    pub share_credentials_version: Option<i32>,
+}
+
+// ============================================================================
 // Internal helpers
 // ============================================================================
+
+#[derive(Debug, Clone, Serialize)]
+pub(crate) struct RotateRecipientTokenRequest {
+    pub existing_token_expire_in_seconds: i64,
+}
 
 #[derive(Debug, Clone, Deserialize)]
 pub(crate) struct EmptyResponse {}

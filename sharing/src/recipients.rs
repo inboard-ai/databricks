@@ -1,5 +1,6 @@
 use crate::types::{
-    CreateRecipient, EmptyResponse, ListRecipientsResponse, RecipientInfo, UpdateRecipient,
+    CreateRecipient, EmptyResponse, GetRecipientSharePermissionsResponse, ListRecipientsResponse,
+    RecipientInfo, RotateRecipientTokenRequest, UpdateRecipient,
 };
 use databricks_core::{Client, Error};
 
@@ -40,5 +41,31 @@ impl Recipients {
     pub async fn delete(&self, name: &str) -> Result<(), Error> {
         let _: EmptyResponse = self.client.delete(&format!("{}/{}", PATH, name)).await?;
         Ok(())
+    }
+
+    /// Rotate the token for a recipient.
+    pub async fn rotate_token(
+        &self,
+        name: &str,
+        existing_token_expire_in_seconds: i64,
+    ) -> Result<RecipientInfo, Error> {
+        self.client
+            .post(
+                &format!("{}/{}/rotate-token", PATH, name),
+                &RotateRecipientTokenRequest {
+                    existing_token_expire_in_seconds,
+                },
+            )
+            .await
+    }
+
+    /// Get the share permissions for a recipient.
+    pub async fn share_permissions(
+        &self,
+        name: &str,
+    ) -> Result<GetRecipientSharePermissionsResponse, Error> {
+        self.client
+            .get(&format!("{}/{}/share-permissions", PATH, name))
+            .await
     }
 }

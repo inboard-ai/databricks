@@ -193,3 +193,185 @@ pub struct ListGitCredentialsResponse {
 
 #[derive(Debug, Clone, Deserialize)]
 pub(crate) struct EmptyResponse {}
+
+// ============================================================================
+// Workspace Object Permission types
+// ============================================================================
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum WorkspaceObjectPermissionLevel {
+    CanEdit,
+    CanManage,
+    CanRead,
+    CanRun,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkspaceObjectPermissions {
+    #[serde(default)]
+    pub access_control_list: Option<Vec<WorkspaceObjectAccessControlResponse>>,
+    #[serde(default)]
+    pub object_id: Option<String>,
+    #[serde(default)]
+    pub object_type: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkspaceObjectAccessControlResponse {
+    #[serde(default)]
+    pub all_permissions: Option<Vec<WorkspaceObjectPermission>>,
+    #[serde(default)]
+    pub display_name: Option<String>,
+    #[serde(default)]
+    pub group_name: Option<String>,
+    #[serde(default)]
+    pub service_principal_name: Option<String>,
+    #[serde(default)]
+    pub user_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkspaceObjectPermission {
+    #[serde(default)]
+    pub inherited: Option<bool>,
+    #[serde(default)]
+    pub inherited_from_object: Option<Vec<String>>,
+    #[serde(default)]
+    pub permission_level: Option<WorkspaceObjectPermissionLevel>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct WorkspaceObjectPermissionsRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub access_control_list: Option<Vec<WorkspaceObjectAccessControlRequest>>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct WorkspaceObjectAccessControlRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub group_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub permission_level: Option<WorkspaceObjectPermissionLevel>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service_principal_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct WorkspaceObjectPermissionsDescription {
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub permission_level: Option<WorkspaceObjectPermissionLevel>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct GetWorkspaceObjectPermissionLevelsResponse {
+    #[serde(default)]
+    pub permission_levels: Vec<WorkspaceObjectPermissionsDescription>,
+}
+
+// ============================================================================
+// Repo Permission types
+// ============================================================================
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum RepoPermissionLevel {
+    CanEdit,
+    CanManage,
+    CanRead,
+    CanRun,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RepoPermissions {
+    #[serde(default)]
+    pub access_control_list: Option<Vec<RepoAccessControlResponse>>,
+    #[serde(default)]
+    pub object_id: Option<String>,
+    #[serde(default)]
+    pub object_type: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RepoAccessControlResponse {
+    #[serde(default)]
+    pub all_permissions: Option<Vec<RepoPermission>>,
+    #[serde(default)]
+    pub display_name: Option<String>,
+    #[serde(default)]
+    pub group_name: Option<String>,
+    #[serde(default)]
+    pub service_principal_name: Option<String>,
+    #[serde(default)]
+    pub user_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RepoPermission {
+    #[serde(default)]
+    pub inherited: Option<bool>,
+    #[serde(default)]
+    pub inherited_from_object: Option<Vec<String>>,
+    #[serde(default)]
+    pub permission_level: Option<RepoPermissionLevel>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct RepoPermissionsRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub access_control_list: Option<Vec<RepoAccessControlRequest>>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct RepoAccessControlRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub group_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub permission_level: Option<RepoPermissionLevel>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service_principal_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RepoPermissionsDescription {
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub permission_level: Option<RepoPermissionLevel>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct GetRepoPermissionLevelsResponse {
+    #[serde(default)]
+    pub permission_levels: Vec<RepoPermissionsDescription>,
+}
+
+// ============================================================================
+// Secret ACL types
+// ============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AclItem {
+    pub principal: String,
+    pub permission: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub(crate) struct ListAclsResponse {
+    #[serde(default)]
+    pub items: Vec<AclItem>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct GetSecretResponse {
+    #[serde(default)]
+    pub key: Option<String>,
+    #[serde(default)]
+    pub value: Option<String>,
+}

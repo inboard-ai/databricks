@@ -1,10 +1,12 @@
 use crate::types::{
-    DeleteRequest, EmptyResponse, ExportFormat, ExportResponse, ImportRequest, ListResponse,
-    MkdirsRequest, ObjectInfo,
+    DeleteRequest, EmptyResponse, ExportFormat, ExportResponse,
+    GetWorkspaceObjectPermissionLevelsResponse, ImportRequest, ListResponse, MkdirsRequest,
+    ObjectInfo, WorkspaceObjectPermissions, WorkspaceObjectPermissionsRequest,
 };
 use databricks_core::{Client, Error};
 
 const PATH: &str = "/api/2.0/workspace";
+const PERMISSIONS_PATH: &str = "/api/2.0/permissions";
 
 pub struct Notebooks {
     client: Client,
@@ -77,5 +79,55 @@ impl Notebooks {
             )
             .await?;
         Ok(())
+    }
+
+    pub async fn get_permissions(
+        &self,
+        workspace_object_type: &str,
+        workspace_object_id: &str,
+    ) -> Result<WorkspaceObjectPermissions, Error> {
+        let path = format!(
+            "{}/{}/{}",
+            PERMISSIONS_PATH, workspace_object_type, workspace_object_id
+        );
+        self.client.get(&path).await
+    }
+
+    pub async fn get_permission_levels(
+        &self,
+        workspace_object_type: &str,
+        workspace_object_id: &str,
+    ) -> Result<GetWorkspaceObjectPermissionLevelsResponse, Error> {
+        let path = format!(
+            "{}/{}/{}/permissionLevels",
+            PERMISSIONS_PATH, workspace_object_type, workspace_object_id
+        );
+        self.client.get(&path).await
+    }
+
+    pub async fn set_permissions(
+        &self,
+        workspace_object_type: &str,
+        workspace_object_id: &str,
+        request: &WorkspaceObjectPermissionsRequest,
+    ) -> Result<WorkspaceObjectPermissions, Error> {
+        let path = format!(
+            "{}/{}/{}",
+            PERMISSIONS_PATH, workspace_object_type, workspace_object_id
+        );
+        self.client.put(&path, request).await
+    }
+
+    pub async fn update_permissions(
+        &self,
+        workspace_object_type: &str,
+        workspace_object_id: &str,
+        request: &WorkspaceObjectPermissionsRequest,
+    ) -> Result<WorkspaceObjectPermissions, Error> {
+        let path = format!(
+            "{}/{}/{}",
+            PERMISSIONS_PATH, workspace_object_type, workspace_object_id
+        );
+        self.client.patch(&path, request).await
     }
 }

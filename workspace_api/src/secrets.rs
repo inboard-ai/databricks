@@ -1,5 +1,6 @@
 use crate::types::{
-    EmptyResponse, ListScopesResponse, ListSecretsResponse, SecretMetadata, SecretScope,
+    AclItem, EmptyResponse, GetSecretResponse, ListAclsResponse, ListScopesResponse,
+    ListSecretsResponse, SecretMetadata, SecretScope,
 };
 use databricks_core::{Client, Error};
 
@@ -105,5 +106,73 @@ impl Secrets {
             .get_with_query(&format!("{}/list", PATH), &[("scope", scope)])
             .await?;
         Ok(response.secrets)
+    }
+
+    pub async fn get_secret(&self, scope: &str, key: &str) -> Result<GetSecretResponse, Error> {
+        self.client
+            .get_with_query(&format!("{}/get", PATH), &[("scope", scope), ("key", key)])
+            .await
+    }
+
+    pub async fn get_acl(&self, scope: &str, principal: &str) -> Result<AclItem, Error> {
+        self.client
+            .get_with_query(
+                &format!("{}/acls/get", PATH),
+                &[("scope", scope), ("principal", principal)],
+            )
+            .await
+    }
+
+    pub async fn delete_acl(&self, scope: &str, principal: &str) -> Result<(), Error> {
+        #[derive(serde::Serialize)]
+        struct Req {
+            scope: String,
+            principal: String,
+        }
+        let _: EmptyResponse = self
+            .client
+            .post(
+                &format!("{}/acls/delete", PATH),
+                &Req {
+                    scope: scope.to_string(),
+                    principal: principal.to_string(),
+                },
+            )
+            .await?;
+        Ok(())
+    }
+
+    pub async fn list_acls(&self, scope: &str) -> Result<Vec<AclItem>, Error> {
+        let response: ListAclsResponse = self
+            .client
+            .get_with_query(&format!("{}/acls/list", PATH), &[("scope", scope)])
+            .await?;
+        Ok(response.items)
+    }
+
+    pub async fn put_acl(
+        &self,
+        scope: &str,
+        principal: &str,
+        permission: &str,
+    ) -> Result<(), Error> {
+        #[derive(serde::Serialize)]
+        struct Req {
+            scope: String,
+            principal: String,
+            permission: String,
+        }
+        let _: EmptyResponse = self
+            .client
+            .post(
+                &format!("{}/acls/put", PATH),
+                &Req {
+                    scope: scope.to_string(),
+                    principal: principal.to_string(),
+                    permission: permission.to_string(),
+                },
+            )
+            .await?;
+        Ok(())
     }
 }

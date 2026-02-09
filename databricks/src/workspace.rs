@@ -299,6 +299,10 @@ impl Client {
         databricks_apps::Apps::new(self.inner.clone())
     }
 
+    pub fn apps_settings(&self) -> databricks_apps::AppsSettings {
+        databricks_apps::AppsSettings::new(self.inner.clone())
+    }
+
     // Settings services
 
     pub fn ip_access_lists(&self) -> databricks_settings::IpAccessLists {

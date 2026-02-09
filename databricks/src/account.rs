@@ -49,6 +49,18 @@ impl Client {
         databricks_billing::Usage::new(self.inner.clone(), &self.account_id)
     }
 
+    pub fn budget_policy(&self) -> databricks_billing::BudgetPolicyService {
+        databricks_billing::BudgetPolicyService::new(self.inner.clone(), &self.account_id)
+    }
+
+    pub fn log_delivery(&self) -> databricks_billing::LogDelivery {
+        databricks_billing::LogDelivery::new(self.inner.clone(), &self.account_id)
+    }
+
+    pub fn usage_dashboards(&self) -> databricks_billing::UsageDashboards {
+        databricks_billing::UsageDashboards::new(self.inner.clone(), &self.account_id)
+    }
+
     // Provisioning services
 
     pub fn workspaces(&self) -> databricks_provisioning::Workspaces {

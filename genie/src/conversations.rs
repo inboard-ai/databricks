@@ -1,6 +1,6 @@
 use crate::types::{
-    CreateMessageRequest, ExecuteQueryResponse, ListMessagesResponse, Message,
-    StartConversationRequest, StartConversationResponse,
+    CreateMessageRequest, ExecuteQueryResponse, ListConversationsResponse, ListMessagesResponse,
+    Message, SendMessageFeedbackRequest, StartConversationRequest, StartConversationResponse,
 };
 use databricks_core::{Client, Error};
 use std::time::Duration;
@@ -151,5 +151,64 @@ impl Conversations {
         );
         let response: ListMessagesResponse = self.client.get(&path).await?;
         Ok(response.messages)
+    }
+
+    /// Delete a conversation.
+    pub async fn delete_conversation(&self, conversation_id: &str) -> Result<(), Error> {
+        let path = format!(
+            "/api/2.0/genie/spaces/{}/conversations/{}",
+            self.space_id, conversation_id
+        );
+        self.client.delete_empty(&path).await
+    }
+
+    /// Delete a message.
+    pub async fn delete_message(
+        &self,
+        conversation_id: &str,
+        message_id: &str,
+    ) -> Result<(), Error> {
+        let path = format!(
+            "/api/2.0/genie/spaces/{}/conversations/{}/messages/{}",
+            self.space_id, conversation_id, message_id
+        );
+        self.client.delete_empty(&path).await
+    }
+
+    /// List conversations in the space.
+    pub async fn list_conversations(&self) -> Result<ListConversationsResponse, Error> {
+        let path = format!(
+            "/api/2.0/genie/spaces/{}/conversations",
+            self.space_id
+        );
+        self.client.get(&path).await
+    }
+
+    /// Send feedback for a message.
+    pub async fn send_message_feedback(
+        &self,
+        conversation_id: &str,
+        message_id: &str,
+        request: &SendMessageFeedbackRequest,
+    ) -> Result<(), Error> {
+        let path = format!(
+            "/api/2.0/genie/spaces/{}/conversations/{}/messages/{}/feedback",
+            self.space_id, conversation_id, message_id
+        );
+        self.client.post(&path, request).await
+    }
+
+    /// Get query results for a message attachment.
+    pub async fn get_message_attachment_query_result(
+        &self,
+        conversation_id: &str,
+        message_id: &str,
+        attachment_id: &str,
+    ) -> Result<ExecuteQueryResponse, Error> {
+        let path = format!(
+            "/api/2.0/genie/spaces/{}/conversations/{}/messages/{}/attachments/{}/query-result",
+            self.space_id, conversation_id, message_id, attachment_id
+        );
+        self.client.get(&path).await
     }
 }

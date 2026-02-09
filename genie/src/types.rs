@@ -4,14 +4,17 @@ use serde::{Deserialize, Serialize};
 // Space types
 // ============================================================================
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Space {
     pub space_id: String,
-    pub title: String,
+    #[serde(default)]
+    pub title: Option<String>,
     #[serde(default)]
     pub description: Option<String>,
     #[serde(default)]
     pub warehouse_id: Option<String>,
+    #[serde(default)]
+    pub serialized_space: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -262,4 +265,61 @@ pub struct ResultRow {
 pub struct ResultValue {
     #[serde(default)]
     pub string_value: Option<String>,
+}
+
+// ============================================================================
+// Space CRUD request types
+// ============================================================================
+
+#[derive(Debug, Clone, Serialize)]
+pub struct CreateSpaceRequest {
+    pub serialized_space: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent_path: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct UpdateSpaceRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub serialized_space: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+}
+
+// ============================================================================
+// Conversation list types
+// ============================================================================
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ConversationSummary {
+    pub conversation_id: String,
+    pub created_timestamp: i64,
+    pub title: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ListConversationsResponse {
+    #[serde(default)]
+    pub conversations: Vec<ConversationSummary>,
+    #[serde(default)]
+    pub next_page_token: Option<String>,
+}
+
+// ============================================================================
+// Feedback types
+// ============================================================================
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum FeedbackRating {
+    Positive,
+    Negative,
+    None,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SendMessageFeedbackRequest {
+    pub rating: FeedbackRating,
 }

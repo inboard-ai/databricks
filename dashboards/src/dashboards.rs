@@ -1,6 +1,7 @@
 use crate::types::{
     CreateDashboardRequest, Dashboard, ListDashboardsRequest, ListDashboardsResponse,
-    PublishRequest, PublishedDashboard, UpdateDashboardRequest,
+    ListSchedulesResponse, ListSubscriptionsResponse, MigrateDashboardRequest, PublishRequest,
+    PublishedDashboard, Schedule, Subscription, UpdateDashboardRequest,
 };
 use databricks_core::{Client, Error};
 
@@ -81,6 +82,136 @@ impl Dashboards {
     /// Unpublish the dashboard.
     pub async fn unpublish(&self, dashboard_id: &str) -> Result<(), Error> {
         let path = format!("{}/{}/published", PATH, dashboard_id);
+        self.client.delete_empty(&path).await
+    }
+
+    /// Get the published version of a dashboard.
+    pub async fn get_published(&self, dashboard_id: &str) -> Result<PublishedDashboard, Error> {
+        let path = format!("{}/{}/published", PATH, dashboard_id);
+        self.client.get(&path).await
+    }
+
+    /// Migrate a legacy dashboard to Lakeview.
+    pub async fn migrate(&self, request: &MigrateDashboardRequest) -> Result<Dashboard, Error> {
+        let path = format!("{}/migrate", PATH);
+        self.client.post(&path, request).await
+    }
+
+    /// Trash a dashboard (alias for delete).
+    pub async fn trash(&self, dashboard_id: &str) -> Result<(), Error> {
+        self.delete(dashboard_id).await
+    }
+
+    // ========================================================================
+    // Schedules
+    // ========================================================================
+
+    /// Create a schedule for a dashboard.
+    pub async fn create_schedule(
+        &self,
+        dashboard_id: &str,
+        schedule: &Schedule,
+    ) -> Result<Schedule, Error> {
+        let path = format!("{}/{}/schedules", PATH, dashboard_id);
+        self.client.post(&path, schedule).await
+    }
+
+    /// Get a schedule by ID.
+    pub async fn get_schedule(
+        &self,
+        dashboard_id: &str,
+        schedule_id: &str,
+    ) -> Result<Schedule, Error> {
+        let path = format!("{}/{}/schedules/{}", PATH, dashboard_id, schedule_id);
+        self.client.get(&path).await
+    }
+
+    /// List schedules for a dashboard.
+    pub async fn list_schedules(
+        &self,
+        dashboard_id: &str,
+    ) -> Result<ListSchedulesResponse, Error> {
+        let path = format!("{}/{}/schedules", PATH, dashboard_id);
+        self.client.get(&path).await
+    }
+
+    /// Delete a schedule.
+    pub async fn delete_schedule(
+        &self,
+        dashboard_id: &str,
+        schedule_id: &str,
+    ) -> Result<(), Error> {
+        let path = format!("{}/{}/schedules/{}", PATH, dashboard_id, schedule_id);
+        self.client.delete_empty(&path).await
+    }
+
+    /// Update a schedule.
+    pub async fn update_schedule(
+        &self,
+        dashboard_id: &str,
+        schedule_id: &str,
+        schedule: &Schedule,
+    ) -> Result<Schedule, Error> {
+        let path = format!("{}/{}/schedules/{}", PATH, dashboard_id, schedule_id);
+        self.client.put(&path, schedule).await
+    }
+
+    // ========================================================================
+    // Subscriptions
+    // ========================================================================
+
+    /// Create a subscription for a schedule.
+    pub async fn create_subscription(
+        &self,
+        dashboard_id: &str,
+        schedule_id: &str,
+        subscription: &Subscription,
+    ) -> Result<Subscription, Error> {
+        let path = format!(
+            "{}/{}/schedules/{}/subscriptions",
+            PATH, dashboard_id, schedule_id
+        );
+        self.client.post(&path, subscription).await
+    }
+
+    /// Get a subscription by ID.
+    pub async fn get_subscription(
+        &self,
+        dashboard_id: &str,
+        schedule_id: &str,
+        subscription_id: &str,
+    ) -> Result<Subscription, Error> {
+        let path = format!(
+            "{}/{}/schedules/{}/subscriptions/{}",
+            PATH, dashboard_id, schedule_id, subscription_id
+        );
+        self.client.get(&path).await
+    }
+
+    /// List subscriptions for a schedule.
+    pub async fn list_subscriptions(
+        &self,
+        dashboard_id: &str,
+        schedule_id: &str,
+    ) -> Result<ListSubscriptionsResponse, Error> {
+        let path = format!(
+            "{}/{}/schedules/{}/subscriptions",
+            PATH, dashboard_id, schedule_id
+        );
+        self.client.get(&path).await
+    }
+
+    /// Delete a subscription.
+    pub async fn delete_subscription(
+        &self,
+        dashboard_id: &str,
+        schedule_id: &str,
+        subscription_id: &str,
+    ) -> Result<(), Error> {
+        let path = format!(
+            "{}/{}/schedules/{}/subscriptions/{}",
+            PATH, dashboard_id, schedule_id, subscription_id
+        );
         self.client.delete_empty(&path).await
     }
 }

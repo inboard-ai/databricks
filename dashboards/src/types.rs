@@ -105,3 +105,109 @@ pub struct PublishedDashboard {
     #[serde(default)]
     pub warehouse_id: Option<String>,
 }
+
+#[derive(Debug, Clone, Serialize)]
+pub struct MigrateDashboardRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub display_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent_path: Option<String>,
+    pub source_dashboard_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub update_parameter_syntax: Option<bool>,
+}
+
+// ============================================================================
+// Schedule types
+// ============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CronSchedule {
+    pub quartz_cron_expression: String,
+    pub timezone_id: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum SchedulePauseStatus {
+    Paused,
+    Unpaused,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Schedule {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub create_time: Option<String>,
+    pub cron_schedule: CronSchedule,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dashboard_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub etag: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pause_status: Option<SchedulePauseStatus>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub schedule_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub update_time: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub warehouse_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ListSchedulesResponse {
+    #[serde(default)]
+    pub schedules: Vec<Schedule>,
+    #[serde(default)]
+    pub next_page_token: Option<String>,
+}
+
+// ============================================================================
+// Subscription types
+// ============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Subscriber {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub destination_subscriber: Option<SubscriptionSubscriberDestination>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user_subscriber: Option<SubscriptionSubscriberUser>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SubscriptionSubscriberDestination {
+    pub destination_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SubscriptionSubscriberUser {
+    pub user_id: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Subscription {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub create_time: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub created_by_user_id: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dashboard_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub etag: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub schedule_id: Option<String>,
+    pub subscriber: Subscriber,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subscription_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub update_time: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ListSubscriptionsResponse {
+    #[serde(default)]
+    pub subscriptions: Vec<Subscription>,
+    #[serde(default)]
+    pub next_page_token: Option<String>,
+}

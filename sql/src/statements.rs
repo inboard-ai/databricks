@@ -1,4 +1,4 @@
-use crate::types::{Empty, EmptyResponse, Request, Response, StatementState};
+use crate::types::{Empty, EmptyResponse, Request, Response, ResultData, StatementState};
 use databricks_core::{Client, Error};
 use std::time::Duration;
 use tokio::time::sleep;
@@ -44,6 +44,16 @@ impl Statements {
 
         self.wait(&response.statement_id, poll_interval, timeout)
             .await
+    }
+
+    /// Get a result chunk by index
+    pub async fn get_result_chunk(
+        &self,
+        statement_id: &str,
+        chunk_index: i32,
+    ) -> Result<ResultData, Error> {
+        let path = format!("{}/{}/result/chunks/{}", PATH, statement_id, chunk_index);
+        self.client.get(&path).await
     }
 
     /// Poll until the statement reaches a terminal state

@@ -1,4 +1,4 @@
-use crate::types::{ObjectPermissions, SetPermissions};
+use crate::types::{ObjectPermissions, PermissionLevels, SetPermissions, UpdatePermissions};
 use databricks_core::{Client, Error};
 
 const PATH: &str = "/api/2.0/permissions";
@@ -23,6 +23,19 @@ impl Permissions {
         self.client.get(&path).await
     }
 
+    /// Get permission levels for an object type.
+    pub async fn get_permission_levels(
+        &self,
+        object_type: &str,
+        object_id: &str,
+    ) -> Result<PermissionLevels, Error> {
+        let path = format!(
+            "{}/{}/{}/permissionLevels",
+            PATH, object_type, object_id
+        );
+        self.client.get(&path).await
+    }
+
     /// Set (replace) permissions for an object.
     pub async fn set(
         &self,
@@ -39,7 +52,7 @@ impl Permissions {
         &self,
         object_type: &str,
         object_id: &str,
-        request: &SetPermissions,
+        request: &UpdatePermissions,
     ) -> Result<ObjectPermissions, Error> {
         let path = format!("{}/{}/{}", PATH, object_type, object_id);
         self.client.patch(&path, request).await

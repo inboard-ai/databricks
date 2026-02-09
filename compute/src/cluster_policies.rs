@@ -3,6 +3,7 @@ use crate::types::{
     PolicyId,
 };
 use databricks_core::{Client, Error};
+use databricks_iam::{ObjectPermissions, PermissionLevels, SetPermissions, UpdatePermissions};
 
 const PATH: &str = "/api/2.0/policies/clusters";
 
@@ -46,5 +47,53 @@ impl ClusterPolicies {
             )
             .await?;
         Ok(())
+    }
+
+    // Permissions
+
+    pub async fn get_permissions(
+        &self,
+        cluster_policy_id: &str,
+    ) -> Result<ObjectPermissions, Error> {
+        let path = format!(
+            "/api/2.0/permissions/cluster-policies/{}",
+            cluster_policy_id
+        );
+        self.client.get(&path).await
+    }
+
+    pub async fn get_permission_levels(
+        &self,
+        cluster_policy_id: &str,
+    ) -> Result<PermissionLevels, Error> {
+        let path = format!(
+            "/api/2.0/permissions/cluster-policies/{}/permissionLevels",
+            cluster_policy_id
+        );
+        self.client.get(&path).await
+    }
+
+    pub async fn set_permissions(
+        &self,
+        cluster_policy_id: &str,
+        request: &SetPermissions,
+    ) -> Result<ObjectPermissions, Error> {
+        let path = format!(
+            "/api/2.0/permissions/cluster-policies/{}",
+            cluster_policy_id
+        );
+        self.client.put(&path, request).await
+    }
+
+    pub async fn update_permissions(
+        &self,
+        cluster_policy_id: &str,
+        request: &UpdatePermissions,
+    ) -> Result<ObjectPermissions, Error> {
+        let path = format!(
+            "/api/2.0/permissions/cluster-policies/{}",
+            cluster_policy_id
+        );
+        self.client.patch(&path, request).await
     }
 }

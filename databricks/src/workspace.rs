@@ -50,6 +50,10 @@ impl Client {
         databricks_sql::QueryHistory::new(self.inner.clone())
     }
 
+    pub fn query_visualizations(&self) -> databricks_sql::QueryVisualizations {
+        databricks_sql::QueryVisualizations::new(self.inner.clone())
+    }
+
     // Genie services
 
     pub fn genie_spaces(&self) -> databricks_genie::Spaces {
@@ -255,6 +259,10 @@ impl Client {
 
     pub fn model_versions(&self) -> databricks_ml::ModelVersions {
         databricks_ml::ModelVersions::new(self.inner.clone())
+    }
+
+    pub fn model_registry(&self) -> databricks_ml::ModelRegistry {
+        databricks_ml::ModelRegistry::new(self.inner.clone())
     }
 
     // Sharing services

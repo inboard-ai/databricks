@@ -55,6 +55,30 @@ impl Client {
         databricks_provisioning::Workspaces::new(self.inner.clone(), &self.account_id)
     }
 
+    pub fn credentials(&self) -> databricks_provisioning::Credentials {
+        databricks_provisioning::Credentials::new(self.inner.clone(), &self.account_id)
+    }
+
+    pub fn encryption_keys(&self) -> databricks_provisioning::EncryptionKeys {
+        databricks_provisioning::EncryptionKeys::new(self.inner.clone(), &self.account_id)
+    }
+
+    pub fn networks(&self) -> databricks_provisioning::Networks {
+        databricks_provisioning::Networks::new(self.inner.clone(), &self.account_id)
+    }
+
+    pub fn private_access(&self) -> databricks_provisioning::PrivateAccess {
+        databricks_provisioning::PrivateAccess::new(self.inner.clone(), &self.account_id)
+    }
+
+    pub fn storage(&self) -> databricks_provisioning::Storage {
+        databricks_provisioning::Storage::new(self.inner.clone(), &self.account_id)
+    }
+
+    pub fn vpc_endpoints(&self) -> databricks_provisioning::VpcEndpoints {
+        databricks_provisioning::VpcEndpoints::new(self.inner.clone(), &self.account_id)
+    }
+
     // Settings services (account-level)
 
     pub fn network_connectivity(&self) -> databricks_settings::NetworkConnectivity {

@@ -1,9 +1,9 @@
 use crate::types::{
-    CreatePolicy, CreatePolicyResponse, EditPolicy, EmptyResponse, ListPoliciesResponse, Policy,
-    PolicyId,
+    ClusterPolicyPermissions, ClusterPolicyPermissionsRequest, CreatePolicy, CreatePolicyResponse,
+    EditPolicy, EmptyResponse, GetClusterPolicyPermissionLevelsResponse, ListPoliciesResponse,
+    Policy, PolicyId,
 };
 use databricks_core::{Client, Error};
-use databricks_iam::{ObjectPermissions, PermissionLevels, SetPermissions, UpdatePermissions};
 
 const PATH: &str = "/api/2.0/policies/clusters";
 
@@ -54,7 +54,7 @@ impl ClusterPolicies {
     pub async fn get_permissions(
         &self,
         cluster_policy_id: &str,
-    ) -> Result<ObjectPermissions, Error> {
+    ) -> Result<ClusterPolicyPermissions, Error> {
         let path = format!(
             "/api/2.0/permissions/cluster-policies/{}",
             cluster_policy_id
@@ -65,7 +65,7 @@ impl ClusterPolicies {
     pub async fn get_permission_levels(
         &self,
         cluster_policy_id: &str,
-    ) -> Result<PermissionLevels, Error> {
+    ) -> Result<GetClusterPolicyPermissionLevelsResponse, Error> {
         let path = format!(
             "/api/2.0/permissions/cluster-policies/{}/permissionLevels",
             cluster_policy_id
@@ -76,8 +76,8 @@ impl ClusterPolicies {
     pub async fn set_permissions(
         &self,
         cluster_policy_id: &str,
-        request: &SetPermissions,
-    ) -> Result<ObjectPermissions, Error> {
+        request: &ClusterPolicyPermissionsRequest,
+    ) -> Result<ClusterPolicyPermissions, Error> {
         let path = format!(
             "/api/2.0/permissions/cluster-policies/{}",
             cluster_policy_id
@@ -88,8 +88,8 @@ impl ClusterPolicies {
     pub async fn update_permissions(
         &self,
         cluster_policy_id: &str,
-        request: &UpdatePermissions,
-    ) -> Result<ObjectPermissions, Error> {
+        request: &ClusterPolicyPermissionsRequest,
+    ) -> Result<ClusterPolicyPermissions, Error> {
         let path = format!(
             "/api/2.0/permissions/cluster-policies/{}",
             cluster_policy_id

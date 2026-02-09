@@ -54,4 +54,14 @@ impl Client {
     pub fn workspaces(&self) -> databricks_provisioning::Workspaces {
         databricks_provisioning::Workspaces::new(self.inner.clone(), &self.account_id)
     }
+
+    // Settings services (account-level)
+
+    pub fn network_connectivity(&self) -> databricks_settings::NetworkConnectivity {
+        databricks_settings::NetworkConnectivity::new(self.inner.clone(), &self.account_id)
+    }
+
+    pub fn account_ip_access_lists(&self) -> databricks_settings::AccountIpAccessLists {
+        databricks_settings::AccountIpAccessLists::new(self.inner.clone(), &self.account_id)
+    }
 }

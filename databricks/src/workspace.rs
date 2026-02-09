@@ -81,6 +81,22 @@ impl Client {
         databricks_compute::Libraries::new(self.inner.clone())
     }
 
+    pub fn command_execution(&self) -> databricks_compute::CommandExecution {
+        databricks_compute::CommandExecution::new(self.inner.clone())
+    }
+
+    pub fn global_init_scripts(&self) -> databricks_compute::GlobalInitScripts {
+        databricks_compute::GlobalInitScripts::new(self.inner.clone())
+    }
+
+    pub fn instance_profiles(&self) -> databricks_compute::InstanceProfiles {
+        databricks_compute::InstanceProfiles::new(self.inner.clone())
+    }
+
+    pub fn policy_families(&self) -> databricks_compute::PolicyFamilies {
+        databricks_compute::PolicyFamilies::new(self.inner.clone())
+    }
+
     // Jobs services
 
     pub fn jobs(&self) -> databricks_jobs::Jobs {
@@ -163,6 +179,54 @@ impl Client {
         databricks_catalog::Grants::new(self.inner.clone())
     }
 
+    pub fn metastores(&self) -> databricks_catalog::Metastores {
+        databricks_catalog::Metastores::new(self.inner.clone())
+    }
+
+    pub fn storage_credentials(&self) -> databricks_catalog::StorageCredentials {
+        databricks_catalog::StorageCredentials::new(self.inner.clone())
+    }
+
+    pub fn external_locations(&self) -> databricks_catalog::ExternalLocations {
+        databricks_catalog::ExternalLocations::new(self.inner.clone())
+    }
+
+    pub fn connections(&self) -> databricks_catalog::Connections {
+        databricks_catalog::Connections::new(self.inner.clone())
+    }
+
+    pub fn functions(&self) -> databricks_catalog::Functions {
+        databricks_catalog::Functions::new(self.inner.clone())
+    }
+
+    pub fn online_tables(&self) -> databricks_catalog::OnlineTables {
+        databricks_catalog::OnlineTables::new(self.inner.clone())
+    }
+
+    pub fn table_constraints(&self) -> databricks_catalog::TableConstraints {
+        databricks_catalog::TableConstraints::new(self.inner.clone())
+    }
+
+    pub fn system_schemas(&self) -> databricks_catalog::SystemSchemas {
+        databricks_catalog::SystemSchemas::new(self.inner.clone())
+    }
+
+    pub fn workspace_bindings(&self) -> databricks_catalog::WorkspaceBindings {
+        databricks_catalog::WorkspaceBindings::new(self.inner.clone())
+    }
+
+    pub fn artifact_allowlists(&self) -> databricks_catalog::ArtifactAllowlists {
+        databricks_catalog::ArtifactAllowlists::new(self.inner.clone())
+    }
+
+    pub fn catalog_registered_models(&self) -> databricks_catalog::CatalogRegisteredModels {
+        databricks_catalog::CatalogRegisteredModels::new(self.inner.clone())
+    }
+
+    pub fn catalog_model_versions(&self) -> databricks_catalog::CatalogModelVersions {
+        databricks_catalog::CatalogModelVersions::new(self.inner.clone())
+    }
+
     // Serving services
 
     pub fn serving_endpoints(&self) -> databricks_serving::ServingEndpoints {
@@ -235,6 +299,38 @@ impl Client {
 
     pub fn workspace_conf(&self) -> databricks_settings::WorkspaceConf {
         databricks_settings::WorkspaceConf::new(self.inner.clone())
+    }
+
+    pub fn token_management(&self) -> databricks_settings::TokenManagement {
+        databricks_settings::TokenManagement::new(self.inner.clone())
+    }
+
+    pub fn notification_destinations(&self) -> databricks_settings::NotificationDestinations {
+        databricks_settings::NotificationDestinations::new(self.inner.clone())
+    }
+
+    pub fn default_namespace(&self) -> databricks_settings::DefaultNamespace {
+        databricks_settings::DefaultNamespace::new(self.inner.clone())
+    }
+
+    pub fn restrict_workspace_admins(&self) -> databricks_settings::RestrictWorkspaceAdmins {
+        databricks_settings::RestrictWorkspaceAdmins::new(self.inner.clone())
+    }
+
+    pub fn automatic_cluster_update(&self) -> databricks_settings::AutomaticClusterUpdate {
+        databricks_settings::AutomaticClusterUpdate::new(self.inner.clone())
+    }
+
+    pub fn compliance_security_profile(&self) -> databricks_settings::ComplianceSecurityProfile {
+        databricks_settings::ComplianceSecurityProfile::new(self.inner.clone())
+    }
+
+    pub fn enhanced_security_monitoring(&self) -> databricks_settings::EnhancedSecurityMonitoring {
+        databricks_settings::EnhancedSecurityMonitoring::new(self.inner.clone())
+    }
+
+    pub fn personal_compute(&self) -> databricks_settings::PersonalCompute {
+        databricks_settings::PersonalCompute::new(self.inner.clone())
     }
 
     // Dashboard services

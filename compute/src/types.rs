@@ -675,6 +675,210 @@ pub struct ListPolicyFamiliesResponse {
 }
 
 // ============================================================================
+// Cluster permission types
+// ============================================================================
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ClusterPermissions {
+    #[serde(default)]
+    pub object_id: Option<String>,
+    #[serde(default)]
+    pub object_type: Option<String>,
+    #[serde(default)]
+    pub access_control_list: Option<Vec<ClusterAccessControlResponse>>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ClusterAccessControlResponse {
+    #[serde(default)]
+    pub user_name: Option<String>,
+    #[serde(default)]
+    pub group_name: Option<String>,
+    #[serde(default)]
+    pub service_principal_name: Option<String>,
+    #[serde(default)]
+    pub display_name: Option<String>,
+    #[serde(default)]
+    pub all_permissions: Option<Vec<ClusterPermission>>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ClusterPermission {
+    #[serde(default)]
+    pub permission_level: Option<String>,
+    #[serde(default)]
+    pub inherited: Option<bool>,
+    #[serde(default)]
+    pub inherited_from_object: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct GetClusterPermissionLevelsResponse {
+    #[serde(default)]
+    pub permission_levels: Vec<ClusterPermissionsDescription>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ClusterPermissionsDescription {
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub permission_level: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ClusterPermissionsRequest {
+    pub access_control_list: Vec<ClusterAccessControlRequest>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ClusterAccessControlRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub group_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service_principal_name: Option<String>,
+    pub permission_level: String,
+}
+
+// ============================================================================
+// Cluster Policy permission types
+// ============================================================================
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ClusterPolicyPermissions {
+    #[serde(default)]
+    pub object_id: Option<String>,
+    #[serde(default)]
+    pub object_type: Option<String>,
+    #[serde(default)]
+    pub access_control_list: Option<Vec<ClusterPolicyAccessControlResponse>>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ClusterPolicyAccessControlResponse {
+    #[serde(default)]
+    pub user_name: Option<String>,
+    #[serde(default)]
+    pub group_name: Option<String>,
+    #[serde(default)]
+    pub service_principal_name: Option<String>,
+    #[serde(default)]
+    pub display_name: Option<String>,
+    #[serde(default)]
+    pub all_permissions: Option<Vec<ClusterPolicyPermission>>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ClusterPolicyPermission {
+    #[serde(default)]
+    pub permission_level: Option<String>,
+    #[serde(default)]
+    pub inherited: Option<bool>,
+    #[serde(default)]
+    pub inherited_from_object: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct GetClusterPolicyPermissionLevelsResponse {
+    #[serde(default)]
+    pub permission_levels: Vec<ClusterPolicyPermissionsDescription>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ClusterPolicyPermissionsDescription {
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub permission_level: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ClusterPolicyPermissionsRequest {
+    pub access_control_list: Vec<ClusterPolicyAccessControlRequest>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ClusterPolicyAccessControlRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub group_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service_principal_name: Option<String>,
+    pub permission_level: String,
+}
+
+// ============================================================================
+// Instance Pool permission types
+// ============================================================================
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct InstancePoolPermissions {
+    #[serde(default)]
+    pub object_id: Option<String>,
+    #[serde(default)]
+    pub object_type: Option<String>,
+    #[serde(default)]
+    pub access_control_list: Option<Vec<InstancePoolAccessControlResponse>>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct InstancePoolAccessControlResponse {
+    #[serde(default)]
+    pub user_name: Option<String>,
+    #[serde(default)]
+    pub group_name: Option<String>,
+    #[serde(default)]
+    pub service_principal_name: Option<String>,
+    #[serde(default)]
+    pub display_name: Option<String>,
+    #[serde(default)]
+    pub all_permissions: Option<Vec<InstancePoolPermission>>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct InstancePoolPermission {
+    #[serde(default)]
+    pub permission_level: Option<String>,
+    #[serde(default)]
+    pub inherited: Option<bool>,
+    #[serde(default)]
+    pub inherited_from_object: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct GetInstancePoolPermissionLevelsResponse {
+    #[serde(default)]
+    pub permission_levels: Vec<InstancePoolPermissionsDescription>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct InstancePoolPermissionsDescription {
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub permission_level: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct InstancePoolPermissionsRequest {
+    pub access_control_list: Vec<InstancePoolAccessControlRequest>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct InstancePoolAccessControlRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub group_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service_principal_name: Option<String>,
+    pub permission_level: String,
+}
+
+// ============================================================================
 // Internal helpers
 // ============================================================================
 

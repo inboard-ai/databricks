@@ -1,11 +1,11 @@
 use crate::types::{
-    ChangeClusterOwner, ClusterDetails, ClusterId, ClusterState, CreateCluster,
-    CreateClusterResponse, EditCluster, EmptyResponse, GetEvents, GetEventsResponse,
-    GetSparkVersionsResponse, ListAvailableZonesResponse, ListClustersResponse,
-    ListNodeTypesResponse, ResizeCluster, UpdateCluster,
+    ChangeClusterOwner, ClusterDetails, ClusterId, ClusterPermissions, ClusterPermissionsRequest,
+    ClusterState, CreateCluster, CreateClusterResponse, EditCluster, EmptyResponse,
+    GetClusterPermissionLevelsResponse, GetEvents, GetEventsResponse, GetSparkVersionsResponse,
+    ListAvailableZonesResponse, ListClustersResponse, ListNodeTypesResponse, ResizeCluster,
+    UpdateCluster,
 };
 use databricks_core::{Client, Error};
-use databricks_iam::{ObjectPermissions, PermissionLevels, SetPermissions, UpdatePermissions};
 use std::time::Duration;
 use tokio::time::sleep;
 
@@ -173,12 +173,15 @@ impl Clusters {
 
     // Permissions
 
-    pub async fn get_permissions(&self, cluster_id: &str) -> Result<ObjectPermissions, Error> {
+    pub async fn get_permissions(&self, cluster_id: &str) -> Result<ClusterPermissions, Error> {
         let path = format!("/api/2.0/permissions/clusters/{}", cluster_id);
         self.client.get(&path).await
     }
 
-    pub async fn get_permission_levels(&self, cluster_id: &str) -> Result<PermissionLevels, Error> {
+    pub async fn get_permission_levels(
+        &self,
+        cluster_id: &str,
+    ) -> Result<GetClusterPermissionLevelsResponse, Error> {
         let path = format!(
             "/api/2.0/permissions/clusters/{}/permissionLevels",
             cluster_id
@@ -189,8 +192,8 @@ impl Clusters {
     pub async fn set_permissions(
         &self,
         cluster_id: &str,
-        request: &SetPermissions,
-    ) -> Result<ObjectPermissions, Error> {
+        request: &ClusterPermissionsRequest,
+    ) -> Result<ClusterPermissions, Error> {
         let path = format!("/api/2.0/permissions/clusters/{}", cluster_id);
         self.client.put(&path, request).await
     }
@@ -198,8 +201,8 @@ impl Clusters {
     pub async fn update_permissions(
         &self,
         cluster_id: &str,
-        request: &UpdatePermissions,
-    ) -> Result<ObjectPermissions, Error> {
+        request: &ClusterPermissionsRequest,
+    ) -> Result<ClusterPermissions, Error> {
         let path = format!("/api/2.0/permissions/clusters/{}", cluster_id);
         self.client.patch(&path, request).await
     }

@@ -1,5 +1,6 @@
 use crate::types::{
-    DbfsListResponse, DbfsMkdirs, DbfsMove, DbfsPut, DbfsReadResponse, EmptyResponse, FileInfo,
+    AddBlockRequest, CloseRequest, CreateStreamRequest, CreateStreamResponse, DbfsListResponse,
+    DbfsMkdirs, DbfsMove, DbfsPut, DbfsReadResponse, EmptyResponse, FileInfo,
 };
 use base64::Engine;
 use databricks_core::{Client, Error};
@@ -96,6 +97,62 @@ impl Dbfs {
     pub async fn get_status(&self, path: &str) -> Result<FileInfo, Error> {
         self.client
             .get_with_query(&format!("{}/get-status", PATH), &[("path", path)])
+            .await
+    }
+
+    /// Add a block of data to a stream opened by `create`. Data must be base64-encoded.
+    pub async fn add_block(&self, handle: i64, data: &str) -> Result<(), Error> {
+        let _: EmptyResponse = self
+            .client
+            .post(
+                &format!("{}/add-block", PATH),
+                &AddBlockRequest {
+                    handle,
+                    data: data.to_string(),
+                },
+            )
+            .await?;
+        Ok(())
+    }
+
+    /// Close a stream opened by `create`.
+    pub async fn close(&self, handle: i64) -> Result<(), Error> {
+        let _: EmptyResponse = self
+            .client
+            .post(&format!("{}/close", PATH), &CloseRequest { handle })
+            .await?;
+        Ok(())
+    }
+
+    /// Open a stream to upload a file to DBFS.
+    pub async fn create(&self, path: &str, overwrite: bool) -> Result<CreateStreamResponse, Error> {
+        self.client
+            .post(
+                &format!("{}/create", PATH),
+                &CreateStreamRequest {
+                    path: path.to_string(),
+                    overwrite: Some(overwrite),
+                },
+            )
+            .await
+    }
+
+    /// Read a portion of a file from DBFS. Returns base64-encoded data and bytes read.
+    pub async fn read(
+        &self,
+        path: &str,
+        offset: i64,
+        length: i64,
+    ) -> Result<DbfsReadResponse, Error> {
+        self.client
+            .get_with_query(
+                &format!("{}/read", PATH),
+                &[
+                    ("path", path),
+                    ("offset", &offset.to_string()),
+                    ("length", &length.to_string()),
+                ],
+            )
             .await
     }
 }

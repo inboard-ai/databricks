@@ -1,4 +1,4 @@
-use crate::types::{DirectoryEntry, FileStatus, ListDirectoryResponse};
+use crate::types::{DirectoryEntry, EmptyResponse, FileStatus, ListDirectoryResponse};
 use databricks_core::{Client, Error};
 
 const PATH: &str = "/api/2.0/fs/files";
@@ -46,5 +46,30 @@ impl Files {
         let uri = format!("{}/{}", DIR_PATH, path.trim_start_matches('/'));
         let response: ListDirectoryResponse = self.client.get(&uri).await?;
         Ok(response.contents)
+    }
+
+    /// Create a directory at the given path.
+    pub async fn create_directory(&self, path: &str) -> Result<(), Error> {
+        let uri = format!("{}/{}", DIR_PATH, path.trim_start_matches('/'));
+        let _: EmptyResponse = self.client.put(&uri, &serde_json::Value::Null).await?;
+        Ok(())
+    }
+
+    /// Delete a directory at the given path.
+    pub async fn delete_directory(&self, path: &str) -> Result<(), Error> {
+        let uri = format!("{}/{}", DIR_PATH, path.trim_start_matches('/'));
+        self.client.delete_empty(&uri).await
+    }
+
+    /// Get directory metadata (checks existence).
+    pub async fn get_directory_metadata(&self, path: &str) -> Result<(), Error> {
+        let uri = format!("{}/{}", DIR_PATH, path.trim_start_matches('/'));
+        let _: EmptyResponse = self.client.get(&uri).await?;
+        Ok(())
+    }
+
+    /// Get file metadata. Returns the same information as `get_status`.
+    pub async fn get_metadata(&self, path: &str) -> Result<FileStatus, Error> {
+        self.get_status(path).await
     }
 }

@@ -84,5 +84,37 @@ pub struct FileStatus {
     pub last_modified: Option<i64>,
 }
 
+// ============================================================================
+// DBFS streaming types
+// ============================================================================
+
+#[derive(Debug, Clone, Serialize)]
+pub(crate) struct AddBlockRequest {
+    pub handle: i64,
+    pub data: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub(crate) struct CloseRequest {
+    pub handle: i64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub(crate) struct CreateStreamRequest {
+    pub path: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub overwrite: Option<bool>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct CreateStreamResponse {
+    #[serde(default)]
+    pub handle: i64,
+}
+
+// ============================================================================
+// Common types
+// ============================================================================
+
 #[derive(Debug, Clone, Deserialize)]
 pub(crate) struct EmptyResponse {}

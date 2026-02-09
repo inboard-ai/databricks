@@ -485,3 +485,219 @@ pub struct QueryResponse {
     #[serde(default)]
     pub usage: Option<Usage>,
 }
+
+// ============================================================================
+// Build logs / Server logs
+// ============================================================================
+
+/// Response from fetching build logs for a served model.
+#[derive(Debug, Clone, Deserialize)]
+pub struct BuildLogsResponse {
+    #[serde(default)]
+    pub logs: String,
+}
+
+/// Response from fetching server logs for a served model.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ServerLogsResponse {
+    #[serde(default)]
+    pub logs: String,
+}
+
+// ============================================================================
+// Endpoint tags (for patch)
+// ============================================================================
+
+/// A tag on a serving endpoint.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EndpointTag {
+    pub key: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value: Option<String>,
+}
+
+/// Request body for patching tags on a serving endpoint.
+#[derive(Debug, Clone, Serialize)]
+pub struct PatchServingEndpointTags {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub add_tags: Option<Vec<EndpointTag>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub delete_tags: Option<Vec<String>>,
+}
+
+/// Response from patching tags on a serving endpoint.
+#[derive(Debug, Clone, Deserialize)]
+pub struct EndpointTags {
+    #[serde(default)]
+    pub tags: Vec<EndpointTag>,
+}
+
+// ============================================================================
+// AI Gateway
+// ============================================================================
+
+/// Configuration for the AI Gateway on a serving endpoint.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AiGatewayConfig {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fallback_config: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub guardrails: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub inference_table_config: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rate_limits: Option<Vec<serde_json::Value>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub usage_tracking_config: Option<serde_json::Value>,
+}
+
+/// Request body for putting an AI Gateway configuration.
+pub type PutAiGatewayRequest = AiGatewayConfig;
+
+/// Response from putting an AI Gateway configuration.
+pub type PutAiGatewayResponse = AiGatewayConfig;
+
+// ============================================================================
+// External function (http_request)
+// ============================================================================
+
+/// HTTP method for an external function request.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum HttpMethod {
+    Get,
+    Post,
+    Put,
+    Patch,
+    Delete,
+}
+
+/// Request body for invoking an external function via HTTP.
+#[derive(Debug, Clone, Serialize)]
+pub struct ExternalFunctionRequest {
+    pub connection_name: String,
+    pub method: HttpMethod,
+    pub path: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub headers: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub json: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub params: Option<String>,
+}
+
+// ============================================================================
+// Notifications
+// ============================================================================
+
+/// Email notification configuration for a serving endpoint.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EmailNotifications {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub on_start: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub on_success: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub on_failure: Option<Vec<String>>,
+}
+
+/// Request body for updating notifications on a serving endpoint.
+#[derive(Debug, Clone, Serialize)]
+pub struct UpdateNotificationsRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub email_notifications: Option<EmailNotifications>,
+}
+
+/// Response from updating notifications on a serving endpoint.
+#[derive(Debug, Clone, Deserialize)]
+pub struct UpdateNotificationsResponse {
+    #[serde(default)]
+    pub email_notifications: Option<EmailNotifications>,
+    #[serde(default)]
+    pub name: Option<String>,
+}
+
+// ============================================================================
+// Permission types (service-specific, matching Go SDK)
+// ============================================================================
+
+/// Permission level for a serving endpoint.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum ServingEndpointPermissionLevel {
+    CanManage,
+    CanQuery,
+    CanView,
+}
+
+/// An access control entry in a permissions request.
+#[derive(Debug, Clone, Serialize)]
+pub struct ServingEndpointAccessControlRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub group_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service_principal_name: Option<String>,
+    pub permission_level: ServingEndpointPermissionLevel,
+}
+
+/// A permission entry in a permissions response.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ServingEndpointPermission {
+    #[serde(default)]
+    pub inherited: Option<bool>,
+    #[serde(default)]
+    pub inherited_from_object: Option<Vec<String>>,
+    #[serde(default)]
+    pub permission_level: Option<ServingEndpointPermissionLevel>,
+}
+
+/// An access control entry in a permissions response.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ServingEndpointAccessControlResponse {
+    #[serde(default)]
+    pub all_permissions: Option<Vec<ServingEndpointPermission>>,
+    #[serde(default)]
+    pub display_name: Option<String>,
+    #[serde(default)]
+    pub group_name: Option<String>,
+    #[serde(default)]
+    pub service_principal_name: Option<String>,
+    #[serde(default)]
+    pub user_name: Option<String>,
+}
+
+/// Permissions for a serving endpoint.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ServingEndpointPermissions {
+    #[serde(default)]
+    pub access_control_list: Option<Vec<ServingEndpointAccessControlResponse>>,
+    #[serde(default)]
+    pub object_id: Option<String>,
+    #[serde(default)]
+    pub object_type: Option<String>,
+}
+
+/// Request body for setting or updating permissions on a serving endpoint.
+#[derive(Debug, Clone, Serialize)]
+pub struct ServingEndpointPermissionsRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub access_control_list: Option<Vec<ServingEndpointAccessControlRequest>>,
+}
+
+/// Description of a permission level for a serving endpoint.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ServingEndpointPermissionsDescription {
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub permission_level: Option<ServingEndpointPermissionLevel>,
+}
+
+/// Response from getting permission levels for a serving endpoint.
+#[derive(Debug, Clone, Deserialize)]
+pub struct GetServingEndpointPermissionLevelsResponse {
+    #[serde(default)]
+    pub permission_levels: Vec<ServingEndpointPermissionsDescription>,
+}

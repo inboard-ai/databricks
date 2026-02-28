@@ -108,7 +108,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if let Some(result) = &response.result {
         for row in &result.data_array {
-            let product = row.get(0).and_then(|v| v.as_deref()).unwrap_or("?");
+            let product = row.first().and_then(|v| v.as_deref()).unwrap_or("?");
             let revenue = row.get(1).and_then(|v| v.as_deref()).unwrap_or("?");
             println!("  {} - ${}", product, revenue);
         }

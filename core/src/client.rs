@@ -1,21 +1,13 @@
 use crate::auth;
 use crate::error::{ApiError, Error};
 use crate::retry;
-use http_body_util::{BodyExt, Full};
-use hyper::body::Bytes;
-use hyper::{Method, Request};
-use hyper_rustls::HttpsConnector;
-use hyper_util::client::legacy::Client as HyperClient;
-use hyper_util::rt::TokioExecutor;
+use crate::transport;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::sync::Arc;
 
-type HttpClient =
-    HyperClient<HttpsConnector<hyper_util::client::legacy::connect::HttpConnector>, Full<Bytes>>;
-
 struct Inner {
-    http: HttpClient,
+    transport: Box<dyn transport::Http>,
     host: String,
     credentials: Box<dyn auth::Provider>,
     retry_policy: retry::Policy,
@@ -40,7 +32,7 @@ impl Client {
         let path = path.to_string();
         self.0
             .retry_policy
-            .execute(|| self.request(Method::GET, &path, Option::<&()>::None))
+            .execute(|| self.request("GET", &path, Option::<&()>::None))
             .await
     }
 
@@ -49,11 +41,11 @@ impl Client {
         path: &str,
         body: &B,
     ) -> Result<T, Error> {
-        let body_bytes = Bytes::from(serde_json::to_vec(body)?);
+        let body_bytes = serde_json::to_vec(body)?;
         let path = path.to_string();
         self.0
             .retry_policy
-            .execute(|| self.request_raw(Method::POST, &path, body_bytes.clone()))
+            .execute(|| self.request_raw("POST", &path, Some(&body_bytes)))
             .await
     }
 
@@ -61,7 +53,7 @@ impl Client {
         let path = path.to_string();
         self.0
             .retry_policy
-            .execute(|| self.request(Method::POST, &path, Option::<&()>::None))
+            .execute(|| self.request("POST", &path, Option::<&()>::None))
             .await
     }
 
@@ -70,11 +62,11 @@ impl Client {
         path: &str,
         body: &B,
     ) -> Result<T, Error> {
-        let body_bytes = Bytes::from(serde_json::to_vec(body)?);
+        let body_bytes = serde_json::to_vec(body)?;
         let path = path.to_string();
         self.0
             .retry_policy
-            .execute(|| self.request_raw(Method::PUT, &path, body_bytes.clone()))
+            .execute(|| self.request_raw("PUT", &path, Some(&body_bytes)))
             .await
     }
 
@@ -83,11 +75,11 @@ impl Client {
         path: &str,
         body: &B,
     ) -> Result<T, Error> {
-        let body_bytes = Bytes::from(serde_json::to_vec(body)?);
+        let body_bytes = serde_json::to_vec(body)?;
         let path = path.to_string();
         self.0
             .retry_policy
-            .execute(|| self.request_raw(Method::PATCH, &path, body_bytes.clone()))
+            .execute(|| self.request_raw("PATCH", &path, Some(&body_bytes)))
             .await
     }
 
@@ -95,7 +87,7 @@ impl Client {
         let path = path.to_string();
         self.0
             .retry_policy
-            .execute(|| self.request(Method::DELETE, &path, Option::<&()>::None))
+            .execute(|| self.request("DELETE", &path, Option::<&()>::None))
             .await
     }
 
@@ -108,26 +100,19 @@ impl Client {
     }
 
     async fn do_delete_empty(&self, path: &str) -> Result<(), Error> {
-        let uri = format!("{}{}", self.0.host.trim_end_matches('/'), path);
-        let auth_headers = self.0.credentials.authorize().await?;
+        let url = format!("{}{}", self.0.host.trim_end_matches('/'), path);
+        let mut headers = self.0.credentials.authorize().await?;
+        headers.push(("Content-Type".into(), "application/json".into()));
+        headers.push(("Accept".into(), "application/json".into()));
 
-        let mut builder = Request::builder()
-            .method(Method::DELETE)
-            .uri(&uri)
-            .header("Content-Type", "application/json")
-            .header("Accept", "application/json");
+        let resp = self
+            .0
+            .transport
+            .request("DELETE", &url, &headers, None)
+            .await?;
 
-        for (name, value) in &auth_headers {
-            builder = builder.header(name.as_str(), value.as_str());
-        }
-
-        let req = builder.body(Full::new(Bytes::new()))?;
-        let response = self.0.http.request(req).await?;
-        let status = response.status();
-        let body = response.into_body().collect().await?.to_bytes();
-
-        if !status.is_success() {
-            return Err(parse_error_response(status.as_u16(), &body));
+        if resp.status < 200 || resp.status >= 300 {
+            return Err(parse_error_response(resp.status, &resp.body));
         }
 
         Ok(())
@@ -157,29 +142,22 @@ impl Client {
     }
 
     async fn do_get_raw<T: DeserializeOwned>(&self, path: &str) -> Result<T, Error> {
-        let uri = format!("{}{}", self.0.host.trim_end_matches('/'), path);
-        let auth_headers = self.0.credentials.authorize().await?;
+        let url = format!("{}{}", self.0.host.trim_end_matches('/'), path);
+        let mut headers = self.0.credentials.authorize().await?;
+        headers.push(("Content-Type".into(), "application/json".into()));
+        headers.push(("Accept".into(), "application/json".into()));
 
-        let mut builder = Request::builder()
-            .method(Method::GET)
-            .uri(&uri)
-            .header("Content-Type", "application/json")
-            .header("Accept", "application/json");
+        let resp = self
+            .0
+            .transport
+            .request("GET", &url, &headers, None)
+            .await?;
 
-        for (name, value) in &auth_headers {
-            builder = builder.header(name.as_str(), value.as_str());
+        if resp.status < 200 || resp.status >= 300 {
+            return Err(parse_error_response(resp.status, &resp.body));
         }
 
-        let req = builder.body(Full::new(Bytes::new()))?;
-        let response = self.0.http.request(req).await?;
-        let status = response.status();
-        let body = response.into_body().collect().await?.to_bytes();
-
-        if !status.is_success() {
-            return Err(parse_error_response(status.as_u16(), &body));
-        }
-
-        Ok(serde_json::from_slice(&body)?)
+        Ok(serde_json::from_slice(&resp.body)?)
     }
 
     pub async fn get_bytes(&self, path: &str) -> Result<Vec<u8>, Error> {
@@ -191,70 +169,58 @@ impl Client {
     }
 
     async fn do_get_bytes(&self, path: &str) -> Result<Vec<u8>, Error> {
-        let uri = format!("{}{}", self.0.host.trim_end_matches('/'), path);
-        let auth_headers = self.0.credentials.authorize().await?;
+        let url = format!("{}{}", self.0.host.trim_end_matches('/'), path);
+        let headers = self.0.credentials.authorize().await?;
 
-        let mut builder = Request::builder().method(Method::GET).uri(&uri);
+        let resp = self
+            .0
+            .transport
+            .request("GET", &url, &headers, None)
+            .await?;
 
-        for (name, value) in &auth_headers {
-            builder = builder.header(name.as_str(), value.as_str());
+        if resp.status < 200 || resp.status >= 300 {
+            return Err(parse_error_response(resp.status, &resp.body));
         }
 
-        let req = builder.body(Full::new(Bytes::new()))?;
-        let response = self.0.http.request(req).await?;
-        let status = response.status();
-        let body = response.into_body().collect().await?.to_bytes();
-
-        if !status.is_success() {
-            return Err(parse_error_response(status.as_u16(), &body));
-        }
-
-        Ok(body.to_vec())
+        Ok(resp.body)
     }
 
     async fn request<B: Serialize, T: DeserializeOwned>(
         &self,
-        method: Method,
+        method: &str,
         path: &str,
         body: Option<&B>,
     ) -> Result<T, Error> {
         let body_bytes = match body {
-            Some(b) => Bytes::from(serde_json::to_vec(b)?),
-            None => Bytes::new(),
+            Some(b) => Some(serde_json::to_vec(b)?),
+            None => None,
         };
 
-        self.request_raw(method, path, body_bytes).await
+        self.request_raw(method, path, body_bytes.as_deref()).await
     }
 
     async fn request_raw<T: DeserializeOwned>(
         &self,
-        method: Method,
+        method: &str,
         path: &str,
-        body_bytes: Bytes,
+        body: Option<&[u8]>,
     ) -> Result<T, Error> {
-        let uri = format!("{}{}", self.0.host.trim_end_matches('/'), path);
-        let auth_headers = self.0.credentials.authorize().await?;
+        let url = format!("{}{}", self.0.host.trim_end_matches('/'), path);
+        let mut headers = self.0.credentials.authorize().await?;
+        headers.push(("Content-Type".into(), "application/json".into()));
+        headers.push(("Accept".into(), "application/json".into()));
 
-        let mut builder = Request::builder()
-            .method(method)
-            .uri(&uri)
-            .header("Content-Type", "application/json")
-            .header("Accept", "application/json");
+        let resp = self
+            .0
+            .transport
+            .request(method, &url, &headers, body)
+            .await?;
 
-        for (name, value) in &auth_headers {
-            builder = builder.header(name.as_str(), value.as_str());
+        if resp.status < 200 || resp.status >= 300 {
+            return Err(parse_error_response(resp.status, &resp.body));
         }
 
-        let req = builder.body(Full::new(body_bytes))?;
-        let response = self.0.http.request(req).await?;
-        let status = response.status();
-        let body = response.into_body().collect().await?.to_bytes();
-
-        if !status.is_success() {
-            return Err(parse_error_response(status.as_u16(), &body));
-        }
-
-        Ok(serde_json::from_slice(&body)?)
+        Ok(serde_json::from_slice(&resp.body)?)
     }
 }
 
@@ -287,6 +253,7 @@ pub struct Builder {
     token: Option<String>,
     credentials: Option<Box<dyn auth::Provider>>,
     retry_policy: Option<retry::Policy>,
+    transport: Option<Box<dyn transport::Http>>,
 }
 
 impl Builder {
@@ -312,6 +279,15 @@ impl Builder {
         self
     }
 
+    /// Set a custom HTTP transport.
+    ///
+    /// If not set, defaults to [`transport::hyper::HyperTransport`] when the
+    /// `hyper` feature is enabled.
+    pub fn transport(mut self, transport: impl transport::Http + 'static) -> Self {
+        self.transport = Some(Box::new(transport));
+        self
+    }
+
     /// Build from a resolved `config::Config`, using the credential chain.
     pub fn from_config(config: crate::config::Config) -> Result<Client, Error> {
         let host = config
@@ -321,21 +297,10 @@ impl Builder {
 
         let credentials = auth::Chain::from_config(&config)?;
 
-        let https = hyper_rustls::HttpsConnectorBuilder::new()
-            .with_webpki_roots()
-            .https_only()
-            .enable_http1()
-            .enable_http2()
-            .build();
-
-        let http = HyperClient::builder(TokioExecutor::new()).build(https);
-
-        Ok(Client(Arc::new(Inner {
-            http,
-            host,
-            credentials: Box::new(credentials),
-            retry_policy: retry::Policy::default(),
-        })))
+        Builder::default()
+            .host(host)
+            .credentials(credentials)
+            .build()
     }
 
     pub fn build(self) -> Result<Client, Error> {
@@ -351,20 +316,28 @@ impl Builder {
             return Err(Error::Config("credentials or token is required".into()));
         };
 
-        let https = hyper_rustls::HttpsConnectorBuilder::new()
-            .with_webpki_roots()
-            .https_only()
-            .enable_http1()
-            .enable_http2()
-            .build();
-
-        let http = HyperClient::builder(TokioExecutor::new()).build(https);
+        let transport: Box<dyn transport::Http> = match self.transport {
+            Some(t) => t,
+            None => Self::default_transport()?,
+        };
 
         Ok(Client(Arc::new(Inner {
-            http,
+            transport,
             host,
             credentials,
             retry_policy: self.retry_policy.unwrap_or_default(),
         })))
+    }
+
+    #[cfg(feature = "hyper")]
+    fn default_transport() -> Result<Box<dyn transport::Http>, Error> {
+        Ok(Box::new(transport::hyper::HyperTransport::new()))
+    }
+
+    #[cfg(not(feature = "hyper"))]
+    fn default_transport() -> Result<Box<dyn transport::Http>, Error> {
+        Err(Error::Config(
+            "no transport provided; enable the \"hyper\" feature or call .transport()".into(),
+        ))
     }
 }

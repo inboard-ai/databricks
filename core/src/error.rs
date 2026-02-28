@@ -77,11 +77,8 @@ impl std::fmt::Display for Code {
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("HTTP error: {0}")]
-    Http(#[from] hyper::Error),
-
-    #[error("HTTP client error: {0}")]
-    Client(#[from] hyper_util::client::legacy::Error),
+    #[error("Transport error: {0}")]
+    Transport(#[from] crate::transport::Error),
 
     #[error("API error ({code}, HTTP {status}): {message}")]
     Api {
@@ -93,12 +90,6 @@ pub enum Error {
 
     #[error("JSON error: {0}")]
     Json(#[from] serde_json::Error),
-
-    #[error("Invalid URI: {0}")]
-    Uri(#[from] hyper::http::uri::InvalidUri),
-
-    #[error("HTTP error: {0}")]
-    HttpError(#[from] hyper::http::Error),
 
     #[error("Timeout: {0}")]
     Timeout(String),
@@ -136,7 +127,7 @@ impl Error {
             Error::Api { code, status, .. } => {
                 code.is_retryable() || *status == 429 || *status == 503
             }
-            Error::Client(_) => true,
+            Error::Transport(e) => e.is_retryable(),
             _ => false,
         }
     }

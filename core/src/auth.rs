@@ -1,10 +1,12 @@
 mod basic;
 mod chain;
+#[cfg(feature = "hyper")]
 mod oauth;
 mod pat;
 
 pub use basic::Basic;
 pub use chain::Chain;
+#[cfg(feature = "hyper")]
 pub use oauth::OAuthM2M;
 pub use pat::Pat;
 

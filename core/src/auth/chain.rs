@@ -23,7 +23,8 @@ impl Chain {
             });
         }
 
-        // Try OAuth M2M (client credentials)
+        // Try OAuth M2M (client credentials) — requires hyper for token exchange
+        #[cfg(feature = "hyper")]
         if let (Some(client_id), Some(client_secret)) = (&config.client_id, &config.client_secret) {
             let host = config
                 .host

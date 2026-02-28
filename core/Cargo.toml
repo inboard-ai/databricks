@@ -4,19 +4,25 @@ version = "0.1.0"
 edition.workspace = true
 license.workspace = true
 
+[features]
+default = ["hyper"]
+hyper = ["dep:hyper", "dep:hyper-util", "dep:hyper-rustls", "dep:http-body-util", "dep:tokio"]
+
 [dependencies]
-tokio.workspace = true
-hyper.workspace = true
-hyper-util.workspace = true
-hyper-rustls.workspace = true
-http-body-util.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
-dirs.workspace = true
-rand.workspace = true
 async-trait.workspace = true
+rand.workspace = true
+dirs.workspace = true
 base64.workspace = true
+
+# Hyper HTTP backend (optional)
+tokio = { workspace = true, optional = true }
+hyper = { workspace = true, optional = true }
+hyper-util = { workspace = true, optional = true }
+hyper-rustls = { workspace = true, optional = true }
+http-body-util = { workspace = true, optional = true }
 
 [dev-dependencies]
 tempfile = "3"
